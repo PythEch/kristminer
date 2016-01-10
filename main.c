@@ -4,7 +4,7 @@
 #include "curl.c"
 #include "crypto.c"
 
-#define DEBUG
+//#define DEBUG
 #define NONCE_OFFSET 10000000
 
 char *KRIST_SYNC_URL;
@@ -29,7 +29,7 @@ void init() {
 
 char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
 
-long getWork() { return atol(httpGet(GET_WORK_URL)); }
+char *getWork() { return httpGet(GET_WORK_URL); }
 
 bool mine(const char *minerID) {
   long newBlock;
@@ -38,6 +38,7 @@ bool mine(const char *minerID) {
   unsigned char digest[SHA256_DIGEST_LENGTH];
   char *base36;
   char *lastblock = getLastBlock();
+  char *target = getWork();
   long nonce = rand() % 10000000 + NONCE_OFFSET; // might be wrong
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
@@ -47,12 +48,19 @@ bool mine(const char *minerID) {
     base36 = base36enc(nonce);
     sprintf((char *)toSHA256, "%s%s%s", minerID, lastblock, base36);
     free(base36);
-    simpleSHA256(toSHA256, strlen((char *)toSHA256), digest);
+    simpleSHA256(toSHA256, sizeof(toSHA256) - 1, digest);
+
+    if (strncmp((char *)digest, target, 12) < 0) {
+      /* $$$ */
+      // FIXME: this hits too many times, are we rich or the algo is plain out
+      // wrong?
+      printf("$$$\n");
+    }
 
 #ifdef DEBUG
     printf("toSHA256: %s\n", toSHA256);
     printf("hash: ");
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < strlen(digest); i++) {
       printf("%02x", digest[i]);
     }
     printf("\n");
