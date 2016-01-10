@@ -2,6 +2,8 @@
 
 #include "curl.c"
 
+#define NONCE_OFFSET 10000000
+
 char *KRIST_SYNC_URL;
 char *LAST_BLOCK_URL;
 char *GET_WORK_URL;
@@ -21,6 +23,25 @@ void init() {
   GET_BALANCE_URL =
       malloc(strlen(KRIST_SYNC_URL) + strlen("?getbalance=") + 1);
   sprintf(GET_BALANCE_URL, "%s?getbalance=", KRIST_SYNC_URL);
+}
+
+char *getLastBlock() {
+    return httpGet(LAST_BLOCK_URL);
+}
+
+long getWork() {
+    return atol(httpGet(GET_WORK_URL));
+}
+
+int mine() {
+   long nonce = 0; // TODO: figure out what exactly nonce is
+   // to my knowledge nonce has to be random but java version computes it deterministically
+    
+   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
+       /* mine it! */
+   }
+   
+   return 0; 
 }
 
 int main(int argc, char **argv) {
