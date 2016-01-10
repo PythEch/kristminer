@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "curl.c"
+#include "crypto.c"
 
 #define DEBUG
 #define NONCE_OFFSET 10000000
@@ -21,47 +23,55 @@ void init() {
   GET_WORK_URL = malloc(strlen(KRIST_SYNC_URL) + strlen("?getwork") + 1);
   sprintf(GET_WORK_URL, "%s?getwork", KRIST_SYNC_URL);
 
-  GET_BALANCE_URL =
-      malloc(strlen(KRIST_SYNC_URL) + strlen("?getbalance=") + 1);
+  GET_BALANCE_URL = malloc(strlen(KRIST_SYNC_URL) + strlen("?getbalance=") + 1);
   sprintf(GET_BALANCE_URL, "%s?getbalance=", KRIST_SYNC_URL);
 }
 
-char *getLastBlock() {
-    return httpGet(LAST_BLOCK_URL);
-}
+char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
 
-long getWork() {
-    return atol(httpGet(GET_WORK_URL));
-}
+long getWork() { return atol(httpGet(GET_WORK_URL)); }
 
-int mine() {
-    
-    
-   long nonce = 0; // TODO: figure out what exactly nonce is
-   // to my knowledge nonce has to be random but java version computes it deterministically
-    
-   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
-       /* mine it! */
-   }
-   
-   return 0; 
+bool mine(const char *minerID) {
+  long newBlock;
+  char toSHA256[10 + 12 + 5 + 1]; // minerID + lastblock + nonce (base 36) + \0
+  char *base36;
+  char *lastblock = getLastBlock();
+  long nonce = rand() % 10000000 + NONCE_OFFSET; // might be wrong
+
+  for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
+    /* mine it! */
+    // newBlock = Long.parseLong (Utils.subSHA256(minerID + block +
+    // Long.toString(nonce, 36), 12), 16);
+    base36 = base36enc(nonce);
+    sprintf(toSHA256, "%s%s%s", minerID, lastblock, base36);
+    free(base36);
+
+#ifdef DEBUG
+    printf("hash: %s\n", toSHA256);
+#endif
+  }
+
+  return true;
 }
 
 int main(int argc, char **argv) {
   char minerID[11];
-  
+
   init();
 
   // assuming the id is not greater than 10 in size
   printf("Please enter your miner ID: ");
   scanf("%s", minerID);
-  
-  #ifdef DEBUG
-    printf("%s\n", KRIST_SYNC_URL);
-    printf("%s\n", LAST_BLOCK_URL);
-    printf("%s\n", GET_WORK_URL);
-    printf("%s\n", GET_BALANCE_URL);
-    printf("%s\n", getLastBlock());
-    printf("%s\n", minerID);
-  #endif
+
+  printf("sit tight...\n");
+  mine(minerID);
+
+#ifdef DEBUG
+  printf("\n%s\n", KRIST_SYNC_URL);
+  printf("%s\n", LAST_BLOCK_URL);
+  printf("%s\n", GET_WORK_URL);
+  printf("%s\n", GET_BALANCE_URL);
+  printf("%s\n", getLastBlock());
+  printf("%s\n", minerID);
+#endif
 }
