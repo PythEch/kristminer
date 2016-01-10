@@ -33,7 +33,9 @@ long getWork() { return atol(httpGet(GET_WORK_URL)); }
 
 bool mine(const char *minerID) {
   long newBlock;
-  char toSHA256[10 + 12 + 5 + 1]; // minerID + lastblock + nonce (base 36) + \0
+  unsigned char
+      toSHA256[10 + 12 + 5 + 1]; // minerID + lastblock + nonce (base 36) + \0
+  unsigned char digest[SHA256_DIGEST_LENGTH];
   char *base36;
   char *lastblock = getLastBlock();
   long nonce = rand() % 10000000 + NONCE_OFFSET; // might be wrong
@@ -43,11 +45,17 @@ bool mine(const char *minerID) {
     // newBlock = Long.parseLong (Utils.subSHA256(minerID + block +
     // Long.toString(nonce, 36), 12), 16);
     base36 = base36enc(nonce);
-    sprintf(toSHA256, "%s%s%s", minerID, lastblock, base36);
+    sprintf((char *)toSHA256, "%s%s%s", minerID, lastblock, base36);
     free(base36);
+    simpleSHA256(toSHA256, strlen((char *)toSHA256), digest);
 
 #ifdef DEBUG
-    printf("hash: %s\n", toSHA256);
+    printf("toSHA256: %s\n", toSHA256);
+    printf("hash: ");
+    for (int i = 0; i < 32; i++) {
+      printf("%02x", digest[i]);
+    }
+    printf("\n");
 #endif
   }
 
