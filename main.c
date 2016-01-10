@@ -31,6 +31,19 @@ char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
 
 char *getWork() { return httpGet(GET_WORK_URL); }
 
+char *getBalance(const char *minerID) { 
+    char url[strlen(GET_BALANCE_URL) + strlen(minerID) + 1];
+    sprintf(url, "%s%s", GET_BALANCE_URL, minerID);
+    return httpGet(url);
+}
+
+char *submitWork(const char *minerID, long nonce) {
+    // getPage (KRIST_SYNC_LINK + "submitblock&address=" + minerID + "&nonce=" + nonce);
+    char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
+    sprintf(url, "%s?submitblock&address=%s&nonce=%ld", KRIST_SYNC_URL, minerID, nonce);
+    return httpGet(url);
+}
+
 bool mine(const char *minerID) {
   long newBlock;
   unsigned char
@@ -39,7 +52,7 @@ bool mine(const char *minerID) {
   char *base36;
   char *lastblock = getLastBlock();
   char *target = getWork();
-  long nonce = rand() % 10000000 + NONCE_OFFSET; // might be wrong
+  long nonce = 0; // might be wrong
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
     /* mine it! */
@@ -54,7 +67,10 @@ bool mine(const char *minerID) {
       /* $$$ */
       // FIXME: this hits too many times, are we rich or the algo is plain out
       // wrong?
-      printf("$$$\n");
+      printf("$$$: %d\n", i);
+      printf("wtf: %s\n", submitWork(minerID, nonce));
+      printf("balance: %s\n", getBalance(minerID));
+      break;
     }
 
 #ifdef DEBUG
