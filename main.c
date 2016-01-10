@@ -2,6 +2,7 @@
 
 #include "curl.c"
 
+#define DEBUG
 #define NONCE_OFFSET 10000000
 
 char *KRIST_SYNC_URL;
@@ -34,6 +35,8 @@ long getWork() {
 }
 
 int mine() {
+    
+    
    long nonce = 0; // TODO: figure out what exactly nonce is
    // to my knowledge nonce has to be random but java version computes it deterministically
     
@@ -45,10 +48,20 @@ int mine() {
 }
 
 int main(int argc, char **argv) {
+  char minerID[11];
+  
   init();
 
-  printf("%s\n", KRIST_SYNC_URL);
-  printf("%s\n", LAST_BLOCK_URL);
-  printf("%s\n", GET_WORK_URL);
-  printf("%s\n", GET_BALANCE_URL);
+  // assuming the id is not greater than 10 in size
+  printf("Please enter your miner ID: ");
+  scanf("%s", minerID);
+  
+  #ifdef DEBUG
+    printf("%s\n", KRIST_SYNC_URL);
+    printf("%s\n", LAST_BLOCK_URL);
+    printf("%s\n", GET_WORK_URL);
+    printf("%s\n", GET_BALANCE_URL);
+    printf("%s\n", getLastBlock());
+    printf("%s\n", minerID);
+  #endif
 }
