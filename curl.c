@@ -91,20 +91,10 @@ char *httpGet(const char *url) {
   if (res != CURLE_OK) {
     fprintf(stderr, "curl_easy_perform() failed: %s\n",
             curl_easy_strerror(res));
-  } else {
-    /*
-     * Now, our chunk.memory points to a memory block that is chunk.size
-     * bytes big and contains the remote file.
-     *
-     * Do something nice with it!
-     */
-    printf("%lu bytes retrieved\n", (long)chunk.size);
   }
 
   /* cleanup curl stuff */
   curl_easy_cleanup(curl_handle);
-
-  //free(chunk.memory);
 
   /* we're done with libcurl, so clean it up */
   curl_global_cleanup();
