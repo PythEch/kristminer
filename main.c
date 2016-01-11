@@ -5,7 +5,7 @@
 #include "crypto.c"
 
 //#define DEBUG
-#define NONCE_OFFSET 10000000
+#define NONCE_OFFSET 100000000
 
 char *KRIST_SYNC_URL;
 char *LAST_BLOCK_URL;
@@ -29,7 +29,11 @@ void init() {
 
 char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
 
-char *getWork() { return httpGet(GET_WORK_URL); }
+char *getWork() {
+    char *work = malloc(13);
+    sprintf(work, "0000000%s", httpGet(GET_WORK_URL));
+    return work; 
+}
 
 char *getBalance(const char *minerID) { 
     char url[strlen(GET_BALANCE_URL) + strlen(minerID) + 1];
@@ -49,6 +53,7 @@ bool mine(const char *minerID) {
   unsigned char
       toSHA256[10 + 12 + 5 + 1]; // minerID + lastblock + nonce (base 36) + \0
   unsigned char digest[SHA256_DIGEST_LENGTH];
+  char hexDigest[13] = {0};
   char *base36;
   char *lastblock = getLastBlock();
   char *target = getWork();
@@ -62,14 +67,24 @@ bool mine(const char *minerID) {
     sprintf((char *)toSHA256, "%s%s%s", minerID, lastblock, base36);
     free(base36);
     simpleSHA256(toSHA256, sizeof(toSHA256) - 1, digest);
+    for (int i = 0; i < 6; i++) {
+        sprintf(&hexDigest[i * 2], "%02x", digest[i]);
+    }
+    
+    //printf("hex: %s\ntarget: %s\n", hexDigest, target);
 
-    if (strncmp((char *)digest, target, 12) < 0) {
+    if (strncmp(hexDigest, target, 6) < 0) {
       /* $$$ */
       // FIXME: this hits too many times, are we rich or the algo is plain out
       // wrong?
       printf("$$$: %d\n", i);
       printf("wtf: %s\n", submitWork(minerID, nonce));
       printf("balance: %s\n", getBalance(minerID));
+      printf("hash: ");
+      for (int i = 0; i < 6; i++) {
+       printf("%02x", digest[i]);
+      }
+      printf("\ntarget: %s\n", target);
       break;
     }
 
@@ -86,7 +101,7 @@ bool mine(const char *minerID) {
   return true;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) {   
   char minerID[11];
 
   init();
