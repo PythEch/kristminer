@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 #include "curl.c"
 #include "crypto.c"
@@ -47,22 +48,32 @@ char *submitWork(const char *minerID, long nonce) {
   return httpGet(url);
 }
 
-bool mine(const char *minerID, long startOffset, char *block, unsigned long target) {
+typedef struct {
+  const char *minerID;
+  long startOffset;
+  char *block;
+  unsigned long target;
+  bool *successful;
+} mine_struct;
+
+void *mine(void *args_struct) {
+  mine_struct *args = args_struct;
+
   // minerID + lastblock + nonce (base 36) + \0
   unsigned char toSHA256[10 + 12 + 6 + 1];
   unsigned char digest[SHA256_DIGEST_LENGTH];
   unsigned long longDigest;
   char *base36;
   
-  long nonce = startOffset;
+  long nonce = args->startOffset;
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
-    /* mine it! */
+    // mine it! 
     // newBlock = Long.parseLong (Utils.subSHA256(minerID + block +
     // Long.toString(nonce, 36), 12), 16);
     base36 = base36enc(nonce);
-    memcpy(toSHA256, minerID, 10);
-    memcpy(toSHA256 + 10, block, 12);
+    memcpy(toSHA256, args->minerID, 10);
+    memcpy(toSHA256 + 10, args->block, 12);
     memcpy(toSHA256 + 10 + 12, base36, strlen(base36) + 1);
     free(base36);
     simpleSHA256(toSHA256, strlen(toSHA256), digest);
@@ -72,43 +83,44 @@ bool mine(const char *minerID, long startOffset, char *block, unsigned long targ
       longDigest |= digest[i];
     }
     
-#ifdef DEBUG
-    printf("long: %lu", longDigest);
-    printf("hash: ");
-    for (int i = 0; i < sizeof(digest); i++) {
-      printf("%02x", digest[i]);
-    }
-    printf("\n");
-#endif
+    #ifdef DEBUG
+      printf("long: %lu", longDigest);
+      printf("hash: ");
+      for (int i = 0; i < sizeof(digest); i++) {
+        printf("%02x", digest[i]);
+      }
+      printf("\n");
+    #endif
 
-    if (longDigest < target) {
+    if (longDigest < args->target) {
       printf("$$$: %d\n", i);
-      printf("wtf: %s\n", submitWork(minerID, nonce));
-      printf("balance: %s\n", getBalance(minerID));
+      printf("wtf: %s\n", submitWork(args->minerID, nonce));
+      printf("balance: %s\n", getBalance(args->minerID));
       printf("hash: ");
       for (int i = 0; i < 6; i++) {
         printf("%02x", digest[i]);
       }
-      printf("\ntarget: %ld\n", target);
+      printf("\ntarget: %ld\n", args->target);
       
-      return true;
+      *args->successful = true;
+      return NULL;
     }
-
-#ifdef DEBUG
-    printf("toSHA256: %s\n", toSHA256);
-    printf("hash: ");
-    for (int i = 0; i < sizeof(digest); i++) {
-      printf("%02x", digest[i]);
-    }
-    printf("\n");
-#endif
+    #ifdef DEBUG
+      printf("toSHA256: %s\n", toSHA256);
+      printf("hash: ");
+      for (int i = 0; i < sizeof(digest); i++) {
+        printf("%02x", digest[i]);
+      }
+      printf("\n");
+    #endif
   }
 
-  return false;
+  *args->successful = false;
+  return NULL;
 }
 
 int main(int argc, char **argv) {
-  char minerID[11];
+  char minerID[11] = "kz3g6cwhec";
   char *lastblock = "";
   char *block;
   unsigned long target;
@@ -116,14 +128,17 @@ int main(int argc, char **argv) {
   init();
 
   // assuming the id is not greater than 10 in size
-  printf("Please enter your miner ID: ");
-  scanf("%s", minerID);
+  //printf("Please enter your miner ID: ");
+  //scanf("%s", minerID);
 
   printf("sit tight...\n");
   int i = 0;
   clock_t lastTime = clock();
+  pthread_t thread[4];
+  bool successful = false;
+  
   do {
-    long speed = (long)(NONCE_OFFSET / ((clock() - lastTime) / (float)CLOCKS_PER_SEC));
+    long speed = (long)(NONCE_OFFSET / ((clock() - lastTime) / (float)CLOCKS_PER_SEC))*4;
     printf("Speed: %ld/s\n", speed);
       
     block = getLastBlock();
@@ -136,7 +151,40 @@ int main(int argc, char **argv) {
     
     lastblock = strdup(block);
     lastTime = clock();
-  } while (!mine(minerID, i++ * NONCE_OFFSET, block, target));
+    mine_struct *args = malloc(sizeof(*args));
+
+    args->minerID = minerID;
+    args->startOffset = i * NONCE_OFFSET;
+    args->block = block;
+    args->target = target;
+    args->successful = &successful;
+
+    for(int x = 0; x < 4; ++x){
+      switch(x){
+        case 3:
+          args->startOffset = i * 70000000;
+        break;
+        case 2:
+          args->startOffset = i * 50000000;
+        break;
+        case 1:
+          args->startOffset = i * 30000000;
+        break;
+        default:
+        case 0:
+          args->startOffset = i * 10000000;
+        break;
+      }
+
+      pthread_create(&(thread[x]), NULL, mine, args);
+    }
+
+    free(args);
+
+    for(int x = 0; x < 4; ++x){
+      pthread_join(thread[x], NULL);
+    }
+  } while (!successful);
 
 #ifdef DEBUG
   printf("\n%s\n", KRIST_SYNC_URL);
