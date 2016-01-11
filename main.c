@@ -48,8 +48,8 @@ char *submitWork(const char *minerID, long nonce) {
 }
 
 bool mine(const char *minerID, long startOffset, char *block, unsigned long target) {
-  unsigned char
-      toSHA256[10 + 12 + 6 + 1]; // minerID + lastblock + nonce (base 36) + \0
+  // minerID + lastblock + nonce (base 36) + \0
+  unsigned char toSHA256[10 + 12 + 6 + 1];
   unsigned char digest[SHA256_DIGEST_LENGTH];
   unsigned long longDigest;
   char *base36;
@@ -61,7 +61,9 @@ bool mine(const char *minerID, long startOffset, char *block, unsigned long targ
     // newBlock = Long.parseLong (Utils.subSHA256(minerID + block +
     // Long.toString(nonce, 36), 12), 16);
     base36 = base36enc(nonce);
-    sprintf((char *)toSHA256, "%s%s%s", minerID, block, base36);
+    memcpy(toSHA256, minerID, 10);
+    memcpy(toSHA256 + 10, block, 12);
+    memcpy(toSHA256 + 10 + 12, base36, strlen(base36) + 1);
     free(base36);
     simpleSHA256(toSHA256, strlen(toSHA256), digest);
     longDigest = 0;
@@ -80,9 +82,6 @@ bool mine(const char *minerID, long startOffset, char *block, unsigned long targ
 #endif
 
     if (longDigest < target) {
-      /* $$$ */
-      // FIXME: this hits too many times, are we rich or the algo is plain out
-      // wrong?
       printf("$$$: %d\n", i);
       printf("wtf: %s\n", submitWork(minerID, nonce));
       printf("balance: %s\n", getBalance(minerID));
@@ -122,16 +121,21 @@ int main(int argc, char **argv) {
 
   printf("sit tight...\n");
   int i = 0;
+  clock_t lastTime = clock();
   do {
+    long speed = (long)(NONCE_OFFSET / ((clock() - lastTime) / (float)CLOCKS_PER_SEC));
+    printf("Speed: %ld/s\n", speed);
+      
     block = getLastBlock();
     target = getWork();
     
     if (0 != strcmp(lastblock, block)) {
-        printf("it changed from %s to %s...\n", lastblock, block);
+        printf("block changed from %s to %s...\n", lastblock, block);
         i = 0;
     }
     
     lastblock = strdup(block);
+    lastTime = clock();
   } while (!mine(minerID, i++ * NONCE_OFFSET, block, target));
 
 #ifdef DEBUG
