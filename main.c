@@ -29,23 +29,22 @@ void init() {
 
 char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
 
-char *getWork() {
-    char *work = malloc(13);
-    sprintf(work, "0000000%s", httpGet(GET_WORK_URL));
-    return work; 
-}
+long getWork() { return atol(httpGet(GET_WORK_URL)); }
 
-char *getBalance(const char *minerID) { 
-    char url[strlen(GET_BALANCE_URL) + strlen(minerID) + 1];
-    sprintf(url, "%s%s", GET_BALANCE_URL, minerID);
-    return httpGet(url);
+char *getBalance(const char *minerID) {
+  char url[strlen(GET_BALANCE_URL) + strlen(minerID) + 1];
+  sprintf(url, "%s%s", GET_BALANCE_URL, minerID);
+  return httpGet(url);
 }
 
 char *submitWork(const char *minerID, long nonce) {
-    // getPage (KRIST_SYNC_LINK + "submitblock&address=" + minerID + "&nonce=" + nonce);
-    char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
-    sprintf(url, "%s?submitblock&address=%s&nonce=%ld", KRIST_SYNC_URL, minerID, nonce);
-    return httpGet(url);
+  // getPage (KRIST_SYNC_LINK + "submitblock&address=" + minerID + "&nonce=" +
+  // nonce);
+  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 +
+           strlen("&nonce=") + 8 + 1];
+  sprintf(url, "%s?submitblock&address=%s&nonce=%ld", KRIST_SYNC_URL, minerID,
+          nonce);
+  return httpGet(url);
 }
 
 bool mine(const char *minerID) {
@@ -53,10 +52,10 @@ bool mine(const char *minerID) {
   unsigned char
       toSHA256[10 + 12 + 5 + 1]; // minerID + lastblock + nonce (base 36) + \0
   unsigned char digest[SHA256_DIGEST_LENGTH];
-  char hexDigest[13] = {0};
+  unsigned long longDigest;
   char *base36;
   char *lastblock = getLastBlock();
-  char *target = getWork();
+  long target = getWork();
   long nonce = 0; // might be wrong
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
@@ -67,13 +66,13 @@ bool mine(const char *minerID) {
     sprintf((char *)toSHA256, "%s%s%s", minerID, lastblock, base36);
     free(base36);
     simpleSHA256(toSHA256, sizeof(toSHA256) - 1, digest);
-    for (int i = 0; i < 6; i++) {
-        sprintf(&hexDigest[i * 2], "%02x", digest[i]);
+    longDigest = 0;
+    for (int i = 0; i < 6; ++i) {
+      longDigest <<= 8;
+      longDigest |= digest[i];
     }
-    
-    //printf("hex: %s\ntarget: %s\n", hexDigest, target);
 
-    if (strncmp(hexDigest, target, 6) < 0) {
+    if (longDigest < target) {
       /* $$$ */
       // FIXME: this hits too many times, are we rich or the algo is plain out
       // wrong?
@@ -82,9 +81,9 @@ bool mine(const char *minerID) {
       printf("balance: %s\n", getBalance(minerID));
       printf("hash: ");
       for (int i = 0; i < 6; i++) {
-       printf("%02x", digest[i]);
+        printf("%02x", digest[i]);
       }
-      printf("\ntarget: %s\n", target);
+      printf("\ntarget: %ld\n", target);
       break;
     }
 
@@ -101,7 +100,7 @@ bool mine(const char *minerID) {
   return true;
 }
 
-int main(int argc, char **argv) {   
+int main(int argc, char **argv) {
   char minerID[11];
 
   init();
