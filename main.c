@@ -4,7 +4,7 @@
 #include "curl.c"
 #include "crypto.c"
 
-//#define DEBUG
+#define DEBUG
 #define NONCE_OFFSET 10000000
 
 char *KRIST_SYNC_URL;
@@ -50,7 +50,7 @@ char *submitWork(const char *minerID, long nonce) {
 bool mine(const char *minerID, long startOffset) {
   long newBlock;
   unsigned char
-      toSHA256[10 + 12 + 5 + 1]; // minerID + lastblock + nonce (base 36) + \0
+      toSHA256[10 + 12 + 6 + 1]; // minerID + lastblock + nonce (base 36) + \0
   unsigned char digest[SHA256_DIGEST_LENGTH];
   unsigned long longDigest;
   char *base36;
@@ -66,7 +66,7 @@ bool mine(const char *minerID, long startOffset) {
     base36 = base36enc(nonce);
     sprintf((char *)toSHA256, "%s%s%s", minerID, lastblock, base36);
     free(base36);
-    simpleSHA256(toSHA256, sizeof(toSHA256) - 1, digest);
+    simpleSHA256(toSHA256, strlen(toSHA256), digest);
     longDigest = 0;
     for (int i = 0; i < 6; ++i) {
       longDigest <<= 8;
@@ -92,7 +92,7 @@ bool mine(const char *minerID, long startOffset) {
 #ifdef DEBUG
     printf("toSHA256: %s\n", toSHA256);
     printf("hash: ");
-    for (int i = 0; i < strlen(digest); i++) {
+    for (int i = 0; i < sizeof(digest); i++) {
       printf("%02x", digest[i]);
     }
     printf("\n");
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
   printf("sit tight...\n");
   int i = 0;
   do {
-      printf("%dth iteration...", (i + 1));
+	/* nothing */
   } while (!mine(minerID, i++ * NONCE_OFFSET));
 
 #ifdef DEBUG
