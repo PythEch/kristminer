@@ -5,7 +5,7 @@
 #include "crypto.c"
 
 //#define DEBUG
-#define NONCE_OFFSET 100000000
+#define NONCE_OFFSET 10000000
 
 char *KRIST_SYNC_URL;
 char *LAST_BLOCK_URL;
@@ -47,7 +47,7 @@ char *submitWork(const char *minerID, long nonce) {
   return httpGet(url);
 }
 
-bool mine(const char *minerID) {
+bool mine(const char *minerID, long startOffset) {
   long newBlock;
   unsigned char
       toSHA256[10 + 12 + 5 + 1]; // minerID + lastblock + nonce (base 36) + \0
@@ -55,8 +55,9 @@ bool mine(const char *minerID) {
   unsigned long longDigest;
   char *base36;
   char *lastblock = getLastBlock();
-  long target = getWork();
-  long nonce = 0; // might be wrong
+  unsigned long target = getWork();
+  
+  long nonce = startOffset;
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
     /* mine it! */
@@ -84,7 +85,8 @@ bool mine(const char *minerID) {
         printf("%02x", digest[i]);
       }
       printf("\ntarget: %ld\n", target);
-      break;
+      
+      return true;
     }
 
 #ifdef DEBUG
@@ -97,7 +99,7 @@ bool mine(const char *minerID) {
 #endif
   }
 
-  return true;
+  return false;
 }
 
 int main(int argc, char **argv) {
@@ -110,7 +112,10 @@ int main(int argc, char **argv) {
   scanf("%s", minerID);
 
   printf("sit tight...\n");
-  mine(minerID);
+  int i = 0;
+  do {
+      printf("%dth iteration...", (i + 1));
+  } while (!mine(minerID, i++ * NONCE_OFFSET));
 
 #ifdef DEBUG
   printf("\n%s\n", KRIST_SYNC_URL);
