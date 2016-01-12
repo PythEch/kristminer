@@ -112,6 +112,8 @@ int main(int argc, char **argv) {
   int threadCount;
   char *lastBlock;
   mine_t args;
+  
+  long startOffset = 0;
 
   // parse arguments
   if (argc != 2 && argc != 3) {
@@ -139,6 +141,15 @@ int main(int argc, char **argv) {
   
   // spawning...
   lastBlock = getLastBlock();
+  args.block = strdup(lastBlock);
+  args.target = getWork();
+  *args.successful = false;
+  args.minerID = minerID;
+  
+  for (int i = 0; i < threadCount; i++) {
+    args.startOffset = startOffset++ * NONCE_OFFSET;
+    pthread_create(&thread[i], NULL, mine, &args);
+  }
   
   
   
