@@ -113,6 +113,8 @@ void printUsage(char *programName) {
 }
 
 int main(int argc, char **argv) {
+  init();
+  
   char minerID[11];
   int threadCount;
   char *lastBlock;
@@ -153,6 +155,7 @@ int main(int argc, char **argv) {
   args.target = getWork();
   args.minerID = minerID;
   
+  
   for (int i = 0; i < threadCount; i++) {
     args.startOffset = startOffset++ * NONCE_OFFSET;
     stats[i] = WORKING;
@@ -182,13 +185,14 @@ int main(int argc, char **argv) {
         case DEAD:
           printf("Respawning thread #%d.\n", i);
           args.startOffset = startOffset++ * NONCE_OFFSET;
+          *args.status = WORKING;
           pthread_create(&threads[i], NULL, mine, &args);
           break;
         default:
           break;
       }
     }
-    
+
     sleep(2);
   }
   
