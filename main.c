@@ -138,6 +138,7 @@ int main(int argc, char **argv) {
   
   // spawn threads for the first time
   // then look after them and re-create them when necessary
+  pthread_t threads[threadCount];
   
   // spawning...
   lastBlock = getLastBlock();
@@ -148,7 +149,7 @@ int main(int argc, char **argv) {
   
   for (int i = 0; i < threadCount; i++) {
     args.startOffset = startOffset++ * NONCE_OFFSET;
-    pthread_create(&thread[i], NULL, mine, &args);
+    pthread_create(&threads[i], NULL, mine, &args);
   }
   
   
