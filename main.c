@@ -7,7 +7,6 @@
 
 //#define DEBUG
 #define NONCE_OFFSET 10000000
-#define THREAD_COUNT 4
 
 char *KRIST_SYNC_URL;
 char *LAST_BLOCK_URL;
@@ -103,7 +102,7 @@ void *mine(void *args_struct) {
       }
       printf("\ntarget: %ld\n", args->target);
 
-      *args->successful = true;
+      *(args->successful) = true;
       return NULL;
     }
 
@@ -121,6 +120,36 @@ void *mine(void *args_struct) {
   return NULL;
 }
 
+void printUsage(char *programName) {
+  printf("You Need Jesus 1.0");
+  printf("\n\n");
+  printf("Usage: %s address [--threads=n]\n", programName);
+}
+
+int main(int argc, char **argv) {
+  char minerID[11];
+  int threadCount;
+  char *lastBlock;
+  char *currentBlock;
+  unsigned long target;
+  
+  if (argc != 3) {
+    printUsage(argv[0]);
+    return -1;
+  } else {
+    sscanf(argv[1], "%10s", minerID);
+    if (strlen(minerID) != 10) {
+      printUsage(argv[0]);
+      return -1;
+    }
+    if (sscanf(argv[2], "--threads=%d", &threadCount) != 1) {
+      printUsage(argv[0]);
+      return -1;
+    }
+    printf("%d\n", threadCount);
+  }
+}
+/*
 int main(int argc, char **argv) {
   char minerID[11] = "kz3g6cwhec";
   char *lastblock = "";
@@ -178,3 +207,4 @@ int main(int argc, char **argv) {
   printf("%s\n", minerID);
 #endif
 }
+*/
