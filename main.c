@@ -15,6 +15,8 @@ char *LAST_BLOCK_URL;
 char *GET_WORK_URL;
 char *GET_BALANCE_URL;
 
+unsigned long *speed;
+
 void init() {
   KRIST_SYNC_URL = httpGet("https://raw.githubusercontent.com/BTCTaras/"
                            "kristwallet/master/staticapi/syncNode");
@@ -51,14 +53,16 @@ typedef enum { WORKING, DEAD, SUCCESS } status_t;
 
 typedef struct {
   const char *minerID;
-  long startOffset;
-  char *block;
+  const char *block;
+  unsigned long startOffset;
   unsigned long target;
   status_t *status;
 } mine_t;
 
 #ifdef DEBUG
 void printStruct(mine_t *args) {
+
+  printf("-------------------------------\n");
 
 #ifdef DEBUG_OVERKILL
   printf("struct {\n");
@@ -71,7 +75,10 @@ void printStruct(mine_t *args) {
 #else
   printf("startOffset: %ld\n", args->startOffset);
   printf("block: %s\n", args->block);
+  printf("target: %ld\n", args->target);
 #endif
+
+  printf("-------------------------------\n");
 }
 #endif
 
@@ -107,14 +114,16 @@ void *mine(void *struct_pointer) {
     }
 
     if (longDigest < args.target) {
-      printf("$$$: %d\n", i);
-      printf("wtf: %s\n", submitWork(args.minerID, nonce));
+      printf("i: %d\n", i);
+      printf("nonce: %ld\n", nonce);
+      printf("submitWork: %s\n", submitWork(args.minerID, nonce));
       printf("balance: %s\n", getBalance(args.minerID));
       printf("hash: ");
-      for (int i = 0; i < 6; i++) {
+      for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
         printf("%02x", digest[i]);
       }
       printf("\ntarget: %ld\n", args.target);
+      printf("block: %s\n", args.block);
 
       *args.status = SUCCESS;
       return NULL;
@@ -132,13 +141,10 @@ void printUsage(char *programName) {
 }
 
 int main(int argc, char **argv) {
-  init();
-
   char minerID[11];
-  int threadCount;
-  char *lastBlock;
+  unsigned int threadCount;
   char *currentBlock;
-  mine_t args;
+  char *lastBlock;
 
   long startOffset = 0;
 
@@ -162,6 +168,9 @@ int main(int argc, char **argv) {
       return -1;
     }
   }
+  
+  // get urls
+  init();
 
   // spawn threads for the first time
   // then look after them and re-create them when necessary
@@ -170,17 +179,14 @@ int main(int argc, char **argv) {
   mine_t threadArgs[threadCount];
 
   // spawning...
-  lastBlock = getLastBlock();
-  args.block = lastBlock;
-  args.target = getWork();
-  args.minerID = minerID;
-
   for (int i = 0; i < threadCount; i++) {
-    args.startOffset = startOffset++ * MINE_STEPS;
-    stats[i] = WORKING;
-    args.status = &stats[i];
-
-    threadArgs[i] = args;
+    threadArgs[i].startOffset = startOffset++ * MINE_STEPS;
+    threadArgs[i].block       = getLastBlock();
+    threadArgs[i].target      = getWork();
+    threadArgs[i].minerID     = minerID;
+    
+    stats[i]             = WORKING;
+    threadArgs[i].status = &stats[i];
 
     pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
   }
@@ -203,7 +209,7 @@ int main(int argc, char **argv) {
 
     // check if threads are dead or they mined
     for (int i = 0; i < threadCount; i++) {
-#ifdef DEBUG
+#ifdef DEBUG_OVERKILL
       printf("stats[%d]: %d\n", i, stats[i]);
 #endif
       switch (stats[i]) {
@@ -213,9 +219,10 @@ int main(int argc, char **argv) {
         break;
       case DEAD:
         printf("Respawning thread #%d.\n", i);
+        
         threadArgs[i].startOffset = startOffset++ * MINE_STEPS;
-        threadArgs[i].block = currentBlock;
-        *threadArgs[i].status = WORKING;
+        threadArgs[i].block       = currentBlock;
+        *threadArgs[i].status     = WORKING;
 
         pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
         break;
@@ -224,6 +231,7 @@ int main(int argc, char **argv) {
       }
     }
 
+    // sleep... sleep my beauty...
     sleep(2);
   }
 
