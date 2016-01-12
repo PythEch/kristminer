@@ -102,8 +102,8 @@ void *mine(void *args_struct) {
 }
 
 void printUsage(char *programName) {
-  printf("You Need Jesus 1.0");
-  printf("\n\n");
+  printf("You Need Jesus 1.0\n");
+  printf("\n");
   printf("Usage: %s address [--threads=n]\n", programName);
 }
 
