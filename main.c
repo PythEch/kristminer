@@ -6,16 +6,17 @@
 #include "curl.c"
 #include "crypto.c"
 
-#define DEBUG
+//#define DEBUG
 //#define DEBUG_OVERKILL
 #define MINE_STEPS 10000000
+#define SLEEP_SECONDS 2
 
 char *KRIST_SYNC_URL;
 char *LAST_BLOCK_URL;
 char *GET_WORK_URL;
 char *GET_BALANCE_URL;
 
-unsigned long *speed;
+unsigned int speed = 0;
 
 void init() {
   KRIST_SYNC_URL = httpGet("https://raw.githubusercontent.com/BTCTaras/"
@@ -34,7 +35,7 @@ void init() {
 
 char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
 
-long getWork() { return atol(httpGet(GET_WORK_URL)); }
+unsigned int getWork() { return atoi(httpGet(GET_WORK_URL)); }
 
 char *getBalance(const char *minerID) {
   char url[strlen(GET_BALANCE_URL) + strlen(minerID) + 1];
@@ -42,9 +43,9 @@ char *getBalance(const char *minerID) {
   return httpGet(url);
 }
 
-char *submitWork(const char *minerID, long nonce) {
+char *submitWork(const char *minerID, unsigned int nonce) {
   char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
-  sprintf(url, "%s?submitblock&address=%s&nonce=%ld", KRIST_SYNC_URL, minerID, nonce);
+  sprintf(url, "%s?submitblock&address=%s&nonce=%s", KRIST_SYNC_URL, minerID, base36enc(nonce));
   printf("Submitting to '%s'\n", url);
   return httpGet(url);
 }
@@ -54,7 +55,7 @@ typedef enum { WORKING, DEAD, SUCCESS } status_t;
 typedef struct {
   const char *minerID;
   const char *block;
-  unsigned long startOffset;
+  unsigned int startOffset;
   unsigned long target;
   status_t *status;
 } mine_t;
@@ -67,15 +68,15 @@ void printStruct(mine_t *args) {
 #ifdef DEBUG_OVERKILL
   printf("struct {\n");
   printf("  minerID: %s,\n", args->minerID);
-  printf("  startOffset: %ld,\n", args->startOffset);
+  printf("  startOffset: %u,\n", args->startOffset);
   printf("  block: %s,\n", args->block);
-  printf("  target: %ld,\n", args->target);
+  printf("  target: %lu,\n", args->target);
   printf("  status: %s\n", *args->status == WORKING ? "WORKING" : *args->status == DEAD ? "DEAD" : "SUCCESS");
   printf("}\n");
 #else
-  printf("startOffset: %ld\n", args->startOffset);
+  printf("startOffset: %u\n", args->startOffset);
   printf("block: %s\n", args->block);
-  printf("target: %ld\n", args->target);
+  printf("target: %lu\n", args->target);
 #endif
 
   printf("-------------------------------\n");
@@ -95,13 +96,13 @@ void *mine(void *struct_pointer) {
   unsigned long longDigest;
   char *base36;
 
-  long nonce = args.startOffset;
+  unsigned int nonce = args.startOffset;
 
   // prepare hash string
   memcpy(toHash, args.minerID, 10);
   memcpy(toHash + 10, args.block, 12);
 
-  for (int i = 0; i < MINE_STEPS; i++, nonce++) {
+  for (int i = 0; i < MINE_STEPS; i++, nonce++, ++speed) {
     // hash it
     base36 = base36enc(nonce);
     memcpy(toHash + 10 + 12, base36, strlen(base36) + 1);
@@ -115,14 +116,16 @@ void *mine(void *struct_pointer) {
 
     if (longDigest < args.target) {
       printf("i: %d\n", i);
-      printf("nonce: %ld\n", nonce);
+      printf("nonce: %u\n", nonce);
+      printf("longDigest: %lu\n", longDigest);
+      printf("toHash: %s\n", toHash);
       printf("submitWork: %s\n", submitWork(args.minerID, nonce));
       printf("balance: %s\n", getBalance(args.minerID));
       printf("hash: ");
       for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
         printf("%02x", digest[i]);
       }
-      printf("\ntarget: %ld\n", args.target);
+      printf("\ntarget: %lu\n", args.target);
       printf("block: %s\n", args.block);
 
       *args.status = SUCCESS;
@@ -145,8 +148,8 @@ int main(int argc, char **argv) {
   unsigned int threadCount;
   char *currentBlock;
   char *lastBlock;
-
-  long startOffset = 0;
+  
+  unsigned int startOffset = 0;
 
   // parse arguments
   if (argc != 2 && argc != 3) {
@@ -179,9 +182,10 @@ int main(int argc, char **argv) {
   mine_t threadArgs[threadCount];
 
   // spawning...
+  lastBlock = getLastBlock();
   for (int i = 0; i < threadCount; i++) {
     threadArgs[i].startOffset = startOffset++ * MINE_STEPS;
-    threadArgs[i].block       = getLastBlock();
+    threadArgs[i].block       = lastBlock;
     threadArgs[i].target      = getWork();
     threadArgs[i].minerID     = minerID;
     
@@ -193,15 +197,20 @@ int main(int argc, char **argv) {
 
   // maintain threads here
   while (true) {
+    // benchmark
+    printf("Speed: %u/s...\n", speed / SLEEP_SECONDS);
+    speed = 0;
+    
     // check if block changed
     currentBlock = getLastBlock();
     if (0 != strcmp(currentBlock, lastBlock)) {
       // buggy server
       if (strlen(currentBlock) != 12) {
         printf("Server just crashed... again...\n");
-        currentBlock = lastBlock;
+        sleep(1);
+        continue;
       } else {    
-        printf("Block changed from %s to %s...", lastBlock, currentBlock);
+        printf("Block changed from %s to %s...\n", lastBlock, currentBlock);
         startOffset = 0;
         lastBlock = strdup(currentBlock);
       }
@@ -232,68 +241,8 @@ int main(int argc, char **argv) {
     }
 
     // sleep... sleep my beauty...
-    sleep(2);
+    sleep(SLEEP_SECONDS);
   }
 
   return 0;
 }
-/*
-int main(int argc, char **argv) {
-  char minerID[11] = "kz3g6cwhec";
-  char *lastblock = "";
-  char *block;
-  unsigned long target;
-
-  init();
-
-  printf("sit tight...\n");
-  int i = 0;
-  clock_t lastTime = clock();
-  pthread_t thread[4];
-  bool successful = false;
-
-  do {
-    long speed = (long)(NONCE_OFFSET / ((clock() - lastTime) / (float)CLOCKS_PER_SEC)) *
-THREAD_COUNT;
-    printf("Speed: %ld/s\n", speed);
-
-    block = getLastBlock();
-    target = getWork();
-
-    if (0 != strcmp(lastblock, block)) {
-      printf("block changed from %s to %s...\n", lastblock, block);
-      i = 0;
-    }
-
-    lastblock = strdup(block);
-    lastTime = clock();
-    mine_struct *args = malloc(sizeof(*args));
-
-    args->minerID = minerID;
-    args->block = block;
-    args->target = target;
-    args->successful = &successful;
-
-    for (int x = 0; x < THREAD_COUNT; ++x) {
-      args->startOffset = (i * THREAD_COUNT + x) * NONCE_OFFSET;
-
-      pthread_create(&(thread[x]), NULL, mine, args);
-    }
-
-    free(args);
-
-    for (int x = 0; x < THREAD_COUNT; ++x) {
-      pthread_join(thread[x], NULL);
-    }
-  } while (!successful);
-
-#ifdef DEBUG
-  printf("\n%s\n", KRIST_SYNC_URL);
-  printf("%s\n", LAST_BLOCK_URL);
-  printf("%s\n", GET_WORK_URL);
-  printf("%s\n", GET_BALANCE_URL);
-  printf("%s\n", getLastBlock());
-  printf("%s\n", minerID);
-#endif
-}
-*/
