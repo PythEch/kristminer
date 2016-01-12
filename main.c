@@ -39,12 +39,8 @@ char *getBalance(const char *minerID) {
 }
 
 char *submitWork(const char *minerID, long nonce) {
-  // getPage (KRIST_SYNC_LINK + "submitblock&address=" + minerID + "&nonce=" +
-  // nonce);
-  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 +
-           strlen("&nonce=") + 8 + 1];
-  sprintf(url, "%s?submitblock&address=%s&nonce=%ld", KRIST_SYNC_URL, minerID,
-          nonce);
+  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
+  sprintf(url, "%s?submitblock&address=%s&nonce=%ld", KRIST_SYNC_URL, minerID, nonce);
   return httpGet(url);
 }
 
@@ -60,25 +56,26 @@ void *mine(void *args_struct) {
   mine_struct *args = args_struct;
 
   // minerID + lastblock + nonce (base 36) + \0
-  unsigned char toSHA256[10 + 12 + 6 + 1];
+  unsigned char toHash[10 + 12 + 6 + 1];
   unsigned char digest[SHA256_DIGEST_LENGTH];
   unsigned long longDigest;
   char *base36;
   
   long nonce = args->startOffset;
+  
+  // prepare hash string
+  memcpy(toHash, args->minerID, 10);
+  memcpy(toHash + 10, args->block, 12);
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
     if (*args->successful)
       return NULL;
-    // mine it! 
-    // newBlock = Long.parseLong (Utils.subSHA256(minerID + block +
-    // Long.toString(nonce, 36), 12), 16);
+    
+    // hash it
     base36 = base36enc(nonce);
-    memcpy(toSHA256, args->minerID, 10);
-    memcpy(toSHA256 + 10, args->block, 12);
-    memcpy(toSHA256 + 10 + 12, base36, strlen(base36) + 1);
+    memcpy(toHash + 10 + 12, base36, strlen(base36) + 1);
     free(base36);
-    simpleSHA256(toSHA256, strlen(toSHA256), digest);
+    simpleSHA256(toHash, strlen(toHash), digest);
     longDigest = 0;
     for (int i = 0; i < 6; ++i) {
       longDigest <<= 8;
@@ -107,6 +104,7 @@ void *mine(void *args_struct) {
       *args->successful = true;
       return NULL;
     }
+    
     #ifdef DEBUG
       printf("toSHA256: %s\n", toSHA256);
       printf("hash: ");
@@ -156,27 +154,14 @@ int main(int argc, char **argv) {
     mine_struct *args = malloc(sizeof(*args));
 
     args->minerID = minerID;
-    args->startOffset = i * NONCE_OFFSET;
+    //args->startOffset = i * NONCE_OFFSET;
     args->block = block;
     args->target = target;
     args->successful = &successful;
 
     for(int x = 0; x < 4; ++x){
-      switch(x){
-        case 3:
-          args->startOffset = i * 70000000;
-        break;
-        case 2:
-          args->startOffset = i * 50000000;
-        break;
-        case 1:
-          args->startOffset = i * 30000000;
-        break;
-        default:
-        case 0:
-          args->startOffset = i * 10000000;
-        break;
-      }
+      args->startOffset = (i * 4 + x) * NONCE_OFFSET;
+      
       pthread_create(&(thread[x]), NULL, mine, args);
     }
 
