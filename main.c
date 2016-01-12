@@ -149,11 +149,6 @@ void printUsage(char *programName) {
 int main(int argc, char **argv) {
   char minerID[11];
   unsigned int threadCount;
-  char *currentBlock;
-  char *lastBlock;
-
-  unsigned int lastSpeed = 0;
-  unsigned int startOffset = 0;
 
   // parse arguments
   if (argc != 2 && argc != 3) {
@@ -180,11 +175,16 @@ int main(int argc, char **argv) {
   initURLs();
 
   // spawn threads for the first time
-  // then look after them and re-create them when necessary
+  // then look after them and re-create them when necessary 
   pthread_t threads[threadCount];
   status_t stats[threadCount];
   unsigned int nonces[threadCount];
   mine_t threadArgs[threadCount];
+  
+  char *currentBlock;
+  char *lastBlock;
+
+  unsigned int startOffset = 0;
 
   // spawning...
   lastBlock = getLastBlock();
@@ -202,14 +202,14 @@ int main(int argc, char **argv) {
     pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
   }
 
-  // maintain threads here
+  // maintain threads, here we are defining speed related variables
   struct timespec currentTime, lastTime;
+  double timeElapsed;
+  unsigned int lastSpeed = 0;
 
   while (true) {
-// benchmark
-// printf("Speed: %.2f mh/s...\n", speed / 1000000.0 /SLEEP_SECONDS);
-// speed = 0;
-
+    
+    // calculate the speed, this is gonna be hard
 #ifdef __MACH__
     clock_serv_t cclock;
     mach_timespec_t mts;
@@ -221,18 +221,21 @@ int main(int argc, char **argv) {
 #else
     clock_gettime(CLOCK_REALTIME, &currentTime);
 #endif
+    
+    timeElapsed = (currentTime.tv_sec - lastTime.tv_sec);
+    timeElapsed += (currentTime.tv_nsec - lastTime.tv_nsec) / 1000000000.0;
+    
     unsigned int speed = 0;
-    double elapsed = (currentTime.tv_sec - lastTime.tv_sec);
-    elapsed += (currentTime.tv_nsec - lastTime.tv_nsec) / 1000000000.0;
-    printf("time passed: %f\n", elapsed);
     for (int i = 0; i < threadCount; i++) {
       speed += *threadArgs[i].nonce;
     }
-    printf("Speed: %.2f mh/s...\n", (speed - lastSpeed) / 1000000.0 / elapsed);
+    
+    printf("Speed: %.2f mh/s...\n", (speed - lastSpeed) / 1000000.0 / timeElapsed);
+    
     lastSpeed = speed;
     lastTime = currentTime;
 
-    // check if block changed
+    // check if block changed and then assign nonce to 0 if it's the case
     currentBlock = getLastBlock();
     if (0 != strcmp(currentBlock, lastBlock)) {
       // buggy server
@@ -247,7 +250,7 @@ int main(int argc, char **argv) {
       }
     }
 
-    // check if threads are dead or they mined
+    // check if threads are dead or they mined something
     for (int i = 0; i < threadCount; i++) {
 #ifdef DEBUG_OVERKILL
       printf("stats[%d]: %d\n", i, stats[i]);
@@ -273,7 +276,6 @@ int main(int argc, char **argv) {
     }
 
     // sleep... sleep my beauty...
-
     sleep(SLEEP_SECONDS);
   }
 
