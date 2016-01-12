@@ -60,8 +60,8 @@ typedef struct {
 } mine_t;
 
 void *mine(void *struct_pointer) {
-  // copy the struct to avoid problems
   mine_t args = *(mine_t *)struct_pointer;
+  printf("offset: %ld\n", args.startOffset);
   
   // minerID + lastblock + nonce (base 36) + \0
   unsigned char toHash[10 + 12 + 6 + 1];
@@ -148,6 +148,7 @@ int main(int argc, char **argv) {
   // then look after them and re-create them when necessary
   pthread_t threads[threadCount];
   status_t stats[threadCount];
+  mine_t threadArgs[threadCount];
   
   // spawning...
   lastBlock = getLastBlock();
@@ -155,13 +156,14 @@ int main(int argc, char **argv) {
   args.target = getWork();
   args.minerID = minerID;
   
-  
   for (int i = 0; i < threadCount; i++) {
     args.startOffset = startOffset++ * NONCE_OFFSET;
     stats[i] = WORKING;
     args.status = &stats[i];
     
-    pthread_create(&threads[i], NULL, mine, &args);
+    threadArgs[i] = args;
+    
+    pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
   }
   
   // maintain threads here
@@ -177,6 +179,7 @@ int main(int argc, char **argv) {
     
     // check if threads are dead or they mined
     for (int i = 0; i < threadCount; i++) {
+      printf("stats[%d]: %d\n", i, stats[i]);
       switch (stats[i]) {
         case SUCCESS:
           printf("Successfully mined 'something'.\nTerminating...\n");
@@ -186,6 +189,10 @@ int main(int argc, char **argv) {
           printf("Respawning thread #%d.\n", i);
           args.startOffset = startOffset++ * NONCE_OFFSET;
           stats[i] = WORKING;
+          args.status = &stats[i];
+          
+          threadArgs[i] = args;
+          
           pthread_create(&threads[i], NULL, mine, &args);
           break;
         default:
