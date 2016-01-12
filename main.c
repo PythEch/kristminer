@@ -43,6 +43,7 @@ char *getBalance(const char *minerID) {
 char *submitWork(const char *minerID, long nonce) {
   char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
   sprintf(url, "%s?submitblock&address=%s&nonce=%ld", KRIST_SYNC_URL, minerID, nonce);
+  printf("Submitting to '%s'\n", url);
   return httpGet(url);
 }
 
@@ -69,6 +70,7 @@ void printStruct(mine_t *args) {
   printf("}\n");
 #else
   printf("startOffset: %ld\n", args->startOffset);
+  printf("block: %s\n", args->block);
 #endif
 }
 #endif
@@ -190,8 +192,7 @@ int main(int argc, char **argv) {
     if (0 != strcmp(currentBlock, lastBlock)) {
       printf("Block changed from %s to %s...", lastBlock, currentBlock);
       startOffset = 0;
-      args.block = currentBlock;
-      lastBlock = currentBlock;
+      lastBlock = strdup(currentBlock);
     }
 
     // check if threads are dead or they mined
@@ -206,11 +207,9 @@ int main(int argc, char **argv) {
         break;
       case DEAD:
         printf("Respawning thread #%d.\n", i);
-        args.startOffset = startOffset++ * MINE_STEPS;
-        stats[i] = WORKING;
-        args.status = &stats[i];
-
-        threadArgs[i] = args;
+        threadArgs[i].startOffset = startOffset++ * MINE_STEPS;
+        threadArgs[i].block = currentBlock;
+        *threadArgs[i].status = WORKING;
 
         pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
         break;
