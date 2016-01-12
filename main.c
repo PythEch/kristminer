@@ -190,9 +190,15 @@ int main(int argc, char **argv) {
     // check if block changed
     currentBlock = getLastBlock();
     if (0 != strcmp(currentBlock, lastBlock)) {
-      printf("Block changed from %s to %s...", lastBlock, currentBlock);
-      startOffset = 0;
-      lastBlock = strdup(currentBlock);
+      // buggy server
+      if (strlen(currentBlock) != 12) {
+        printf("Server just crashed... again...\n");
+        currentBlock = lastBlock;
+      } else {    
+        printf("Block changed from %s to %s...", lastBlock, currentBlock);
+        startOffset = 0;
+        lastBlock = strdup(currentBlock);
+      }
     }
 
     // check if threads are dead or they mined
