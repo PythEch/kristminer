@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
     threadArgs[i].block = lastBlock;
     threadArgs[i].target = getWork();
     threadArgs[i].minerID = minerID;
-    
+
     nonces[i] = startOffset++ * MINE_STEPS;
     threadArgs[i].nonce = &nonces[i];
 
@@ -204,12 +204,12 @@ int main(int argc, char **argv) {
 
   // maintain threads here
   struct timespec currentTime, lastTime;
-  
+
   while (true) {
-    // benchmark
-    //printf("Speed: %.2f mh/s...\n", speed / 1000000.0 /SLEEP_SECONDS);
-    //speed = 0;
-   
+// benchmark
+// printf("Speed: %.2f mh/s...\n", speed / 1000000.0 /SLEEP_SECONDS);
+// speed = 0;
+
 #ifdef __MACH__
     clock_serv_t cclock;
     mach_timespec_t mts;
