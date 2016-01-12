@@ -83,15 +83,6 @@ void *mine(void *args_struct) {
       longDigest |= digest[i];
     }
 
-#ifdef DEBUG
-    printf("long: %lu", longDigest);
-    printf("hash: ");
-    for (int i = 0; i < sizeof(digest); i++) {
-      printf("%02x", digest[i]);
-    }
-    printf("\n");
-#endif
-
     if (longDigest < args->target) {
       printf("$$$: %d\n", i);
       printf("wtf: %s\n", submitWork(args->minerID, nonce));
@@ -105,15 +96,6 @@ void *mine(void *args_struct) {
       *(args->successful) = true;
       return NULL;
     }
-
-#ifdef DEBUG
-    printf("toSHA256: %s\n", toSHA256);
-    printf("hash: ");
-    for (int i = 0; i < sizeof(digest); i++) {
-      printf("%02x", digest[i]);
-    }
-    printf("\n");
-#endif
   }
 
   *args->successful = false;
