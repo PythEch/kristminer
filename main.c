@@ -175,12 +175,12 @@ int main(int argc, char **argv) {
   initURLs();
 
   // spawn threads for the first time
-  // then look after them and re-create them when necessary 
+  // then look after them and re-create them when necessary
   pthread_t threads[threadCount];
   status_t stats[threadCount];
   unsigned int nonces[threadCount];
   mine_t threadArgs[threadCount];
-  
+
   char *currentBlock;
   char *lastBlock;
 
@@ -208,8 +208,8 @@ int main(int argc, char **argv) {
   unsigned int lastSpeed = 0;
 
   while (true) {
-    
-    // calculate the speed, this is gonna be hard
+
+// calculate the speed, this is gonna be hard
 #ifdef __MACH__
     clock_serv_t cclock;
     mach_timespec_t mts;
@@ -221,17 +221,17 @@ int main(int argc, char **argv) {
 #else
     clock_gettime(CLOCK_REALTIME, &currentTime);
 #endif
-    
+
     timeElapsed = (currentTime.tv_sec - lastTime.tv_sec);
     timeElapsed += (currentTime.tv_nsec - lastTime.tv_nsec) / 1000000000.0;
-    
+
     unsigned int speed = 0;
     for (int i = 0; i < threadCount; i++) {
       speed += *threadArgs[i].nonce;
     }
-    
+
     printf("Speed: %.2f mh/s...\n", (speed - lastSpeed) / 1000000.0 / timeElapsed);
-    
+
     lastSpeed = speed;
     lastTime = currentTime;
 
