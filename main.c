@@ -50,25 +50,25 @@ typedef struct {
   char *block;
   unsigned long target;
   bool *successful;
-} mine_struct;
+} mine_t;
 
-void *mine(void *args_struct) {
-  mine_struct *args = args_struct;
-
+void *mine(void *struct_pointer) {
+  mine_t args = *(mine_t *)struct_pointer;
+  
   // minerID + lastblock + nonce (base 36) + \0
   unsigned char toHash[10 + 12 + 6 + 1];
   unsigned char digest[SHA256_DIGEST_LENGTH];
   unsigned long longDigest;
   char *base36;
 
-  long nonce = args->startOffset;
+  long nonce = args.startOffset;
 
   // prepare hash string
-  memcpy(toHash, args->minerID, 10);
-  memcpy(toHash + 10, args->block, 12);
+  memcpy(toHash, args.minerID, 10);
+  memcpy(toHash + 10, args.block, 12);
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
-    if (*args->successful)
+    if (*args.successful)
       return NULL;
 
     // hash it
@@ -77,27 +77,27 @@ void *mine(void *args_struct) {
     free(base36);
     simpleSHA256(toHash, strlen(toHash), digest);
     longDigest = 0;
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 6; i++) {
       longDigest <<= 8;
       longDigest |= digest[i];
     }
 
-    if (longDigest < args->target) {
+    if (longDigest < args.target) {
       printf("$$$: %d\n", i);
-      printf("wtf: %s\n", submitWork(args->minerID, nonce));
-      printf("balance: %s\n", getBalance(args->minerID));
+      printf("wtf: %s\n", submitWork(args.minerID, nonce));
+      printf("balance: %s\n", getBalance(args.minerID));
       printf("hash: ");
       for (int i = 0; i < 6; i++) {
         printf("%02x", digest[i]);
       }
-      printf("\ntarget: %ld\n", args->target);
+      printf("\ntarget: %ld\n", args.target);
 
-      *(args->successful) = true;
+      *args.successful = true;
       return NULL;
     }
   }
 
-  *args->successful = false;
+  *args.successful = false;
   return NULL;
 }
 
@@ -111,9 +111,8 @@ int main(int argc, char **argv) {
   char minerID[11];
   int threadCount;
   char *lastBlock;
-  char *currentBlock;
-  unsigned long target;
-  
+  mine_t args;
+
   // parse arguments
   if (argc != 2 && argc != 3) {
     printUsage(argv[0]);
@@ -125,7 +124,7 @@ int main(int argc, char **argv) {
       printf("Invalid address.\n");
       return -1;
     }
-    
+
     // the default for threadCount is 1
     if (argc == 2) {
       threadCount = 1;
@@ -134,6 +133,17 @@ int main(int argc, char **argv) {
       return -1;
     }
   }
+  
+  // spawn threads for the first time
+  // then look after them and re-create them when necessary
+  
+  // spawning...
+  lastBlock = getLastBlock();
+  
+  
+  
+  
+  return 0;
 }
 /*
 int main(int argc, char **argv) {
@@ -151,7 +161,8 @@ int main(int argc, char **argv) {
   bool successful = false;
 
   do {
-    long speed = (long)(NONCE_OFFSET / ((clock() - lastTime) / (float)CLOCKS_PER_SEC)) * THREAD_COUNT;
+    long speed = (long)(NONCE_OFFSET / ((clock() - lastTime) / (float)CLOCKS_PER_SEC)) *
+THREAD_COUNT;
     printf("Speed: %ld/s\n", speed);
 
     block = getLastBlock();
