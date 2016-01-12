@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
         case DEAD:
           printf("Respawning thread #%d.\n", i);
           args.startOffset = startOffset++ * NONCE_OFFSET;
-          *args.status = WORKING;
+          stats[i] = WORKING;
           pthread_create(&threads[i], NULL, mine, &args);
           break;
         default:
