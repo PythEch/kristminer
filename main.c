@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
   unsigned int threadCount;
   char *currentBlock;
   char *lastBlock;
-  
+
   unsigned int startOffset = 0;
 
   // parse arguments
@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
       return -1;
     }
   }
-  
+
   // get urls
   init();
 
@@ -185,11 +185,11 @@ int main(int argc, char **argv) {
   lastBlock = getLastBlock();
   for (int i = 0; i < threadCount; i++) {
     threadArgs[i].startOffset = startOffset++ * MINE_STEPS;
-    threadArgs[i].block       = lastBlock;
-    threadArgs[i].target      = getWork();
-    threadArgs[i].minerID     = minerID;
-    
-    stats[i]             = WORKING;
+    threadArgs[i].block = lastBlock;
+    threadArgs[i].target = getWork();
+    threadArgs[i].minerID = minerID;
+
+    stats[i] = WORKING;
     threadArgs[i].status = &stats[i];
 
     pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
@@ -198,9 +198,9 @@ int main(int argc, char **argv) {
   // maintain threads here
   while (true) {
     // benchmark
-    printf("Speed: %u/s...\n", speed / SLEEP_SECONDS);
+    printf("Speed: %.2f mh/s...\n", speed / 1000000.0 /SLEEP_SECONDS);
     speed = 0;
-    
+
     // check if block changed
     currentBlock = getLastBlock();
     if (0 != strcmp(currentBlock, lastBlock)) {
@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
         printf("Server just crashed... again...\n");
         sleep(1);
         continue;
-      } else {    
+      } else {
         printf("Block changed from %s to %s...\n", lastBlock, currentBlock);
         startOffset = 0;
         lastBlock = strdup(currentBlock);
@@ -228,10 +228,10 @@ int main(int argc, char **argv) {
         break;
       case DEAD:
         printf("Respawning thread #%d.\n", i);
-        
+
         threadArgs[i].startOffset = startOffset++ * MINE_STEPS;
-        threadArgs[i].block       = currentBlock;
-        *threadArgs[i].status     = WORKING;
+        threadArgs[i].block = currentBlock;
+        *threadArgs[i].status = WORKING;
 
         pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
         break;
