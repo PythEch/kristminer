@@ -44,15 +44,22 @@ char *submitWork(const char *minerID, long nonce) {
   return httpGet(url);
 }
 
+typedef enum {
+  WORKING,
+  DEAD,
+  SUCCESS
+} status_t;
+
 typedef struct {
   const char *minerID;
   long startOffset;
   char *block;
   unsigned long target;
-  bool *successful;
+  status_t *status;
 } mine_t;
 
 void *mine(void *struct_pointer) {
+  // copy the struct to avoid problems
   mine_t args = *(mine_t *)struct_pointer;
   
   // minerID + lastblock + nonce (base 36) + \0
@@ -68,9 +75,6 @@ void *mine(void *struct_pointer) {
   memcpy(toHash + 10, args.block, 12);
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
-    if (*args.successful)
-      return NULL;
-
     // hash it
     base36 = base36enc(nonce);
     memcpy(toHash + 10 + 12, base36, strlen(base36) + 1);
@@ -92,12 +96,12 @@ void *mine(void *struct_pointer) {
       }
       printf("\ntarget: %ld\n", args.target);
 
-      *args.successful = true;
+      *args.status = SUCCESS;
       return NULL;
     }
   }
 
-  *args.successful = false;
+  *args.status = DEAD;
   return NULL;
 }
 
@@ -111,6 +115,7 @@ int main(int argc, char **argv) {
   char minerID[11];
   int threadCount;
   char *lastBlock;
+  char *currentBlock;
   mine_t args;
   
   long startOffset = 0;
@@ -139,21 +144,50 @@ int main(int argc, char **argv) {
   // spawn threads for the first time
   // then look after them and re-create them when necessary
   pthread_t threads[threadCount];
+  status_t stats[threadCount];
   
   // spawning...
   lastBlock = getLastBlock();
-  args.block = strdup(lastBlock);
+  args.block = lastBlock;
   args.target = getWork();
-  *args.successful = false;
   args.minerID = minerID;
   
   for (int i = 0; i < threadCount; i++) {
     args.startOffset = startOffset++ * NONCE_OFFSET;
+    stats[i] = WORKING;
+    args.status = &stats[i];
+    
     pthread_create(&threads[i], NULL, mine, &args);
   }
   
-  
-  
+  // maintain threads here
+  while (true) {
+    // check if block changed
+    currentBlock = getLastBlock();
+    if (0 != strcmp(currentBlock, lastBlock)) {
+      printf("Block changed from %s to %s...", lastBlock, currentBlock);
+      startOffset = 0;
+      args.block = currentBlock;
+      lastBlock = currentBlock;
+    }
+    
+    // check if threads are dead or they mined
+    for (int i = 0; i < threadCount; i++) {
+      switch (stats[i]) {
+        case SUCCESS:
+          printf("Successfully mined 'something'.\nTerminating...\n");
+          return 0;
+          break;
+        case DEAD:
+          printf("Respawning thread #%d.\n", i);
+          args.startOffset = startOffset++ * NONCE_OFFSET;
+          pthread_create(&threads[i], NULL, mine, &args);
+          break;
+      }
+    }
+    
+    sleep(2);
+  }
   
   return 0;
 }
