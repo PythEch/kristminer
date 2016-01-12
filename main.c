@@ -7,6 +7,7 @@
 
 //#define DEBUG
 #define NONCE_OFFSET 10000000
+#define THREAD_COUNT 4
 
 char *KRIST_SYNC_URL;
 char *LAST_BLOCK_URL;
@@ -128,10 +129,6 @@ int main(int argc, char **argv) {
 
   init();
 
-  // assuming the id is not greater than 10 in size
-  // printf("Please enter your miner ID: ");
-  // scanf("%s", minerID);
-
   printf("sit tight...\n");
   int i = 0;
   clock_t lastTime = clock();
@@ -139,7 +136,7 @@ int main(int argc, char **argv) {
   bool successful = false;
 
   do {
-    long speed = (long)(NONCE_OFFSET / ((clock() - lastTime) / (float)CLOCKS_PER_SEC)) * 4;
+    long speed = (long)(NONCE_OFFSET / ((clock() - lastTime) / (float)CLOCKS_PER_SEC)) * THREAD_COUNT;
     printf("Speed: %ld/s\n", speed);
 
     block = getLastBlock();
@@ -159,15 +156,15 @@ int main(int argc, char **argv) {
     args->target = target;
     args->successful = &successful;
 
-    for (int x = 0; x < 4; ++x) {
-      args->startOffset = (i * 4 + x) * NONCE_OFFSET;
+    for (int x = 0; x < THREAD_COUNT; ++x) {
+      args->startOffset = (i * THREAD_COUNT + x) * NONCE_OFFSET;
 
       pthread_create(&(thread[x]), NULL, mine, args);
     }
 
     free(args);
 
-    for (int x = 0; x < 4; ++x) {
+    for (int x = 0; x < THREAD_COUNT; ++x) {
       pthread_join(thread[x], NULL);
     }
   } while (!successful);
