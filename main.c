@@ -6,8 +6,9 @@
 #include "curl.c"
 #include "crypto.c"
 
-//#define DEBUG
-#define NONCE_OFFSET 10000000
+#define DEBUG
+//#define DEBUG_OVERKILL
+#define MINE_STEPS 10000000
 
 char *KRIST_SYNC_URL;
 char *LAST_BLOCK_URL;
@@ -57,6 +58,8 @@ typedef struct {
 
 #ifdef DEBUG
 void printStruct(mine_t *args) {
+
+#ifdef DEBUG_OVERKILL
   printf("struct {\n");
   printf("  minerID: %s,\n", args->minerID);
   printf("  startOffset: %ld,\n", args->startOffset);
@@ -64,12 +67,15 @@ void printStruct(mine_t *args) {
   printf("  target: %ld,\n", args->target);
   printf("  status: %s\n", *args->status == WORKING ? "WORKING" : *args->status == DEAD ? "DEAD" : "SUCCESS");
   printf("}\n");
+#else
+  printf("startOffset: %ld\n", args->startOffset);
+#endif
 }
 #endif
 
 void *mine(void *struct_pointer) {
   mine_t args = *(mine_t *)struct_pointer;
-  
+
 #ifdef DEBUG
   printStruct(&args);
 #endif
@@ -86,7 +92,7 @@ void *mine(void *struct_pointer) {
   memcpy(toHash, args.minerID, 10);
   memcpy(toHash + 10, args.block, 12);
 
-  for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
+  for (int i = 0; i < MINE_STEPS; i++, nonce++) {
     // hash it
     base36 = base36enc(nonce);
     memcpy(toHash + 10 + 12, base36, strlen(base36) + 1);
@@ -168,7 +174,7 @@ int main(int argc, char **argv) {
   args.minerID = minerID;
 
   for (int i = 0; i < threadCount; i++) {
-    args.startOffset = startOffset++ * NONCE_OFFSET;
+    args.startOffset = startOffset++ * MINE_STEPS;
     stats[i] = WORKING;
     args.status = &stats[i];
 
@@ -200,7 +206,7 @@ int main(int argc, char **argv) {
         break;
       case DEAD:
         printf("Respawning thread #%d.\n", i);
-        args.startOffset = startOffset++ * NONCE_OFFSET;
+        args.startOffset = startOffset++ * MINE_STEPS;
         stats[i] = WORKING;
         args.status = &stats[i];
 
