@@ -39,8 +39,7 @@ char *getBalance(const char *minerID) {
 }
 
 char *submitWork(const char *minerID, long nonce) {
-  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 +
-           1];
+  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
   sprintf(url, "%s?submitblock&address=%s&nonce=%ld", KRIST_SYNC_URL, minerID, nonce);
   return httpGet(url);
 }
