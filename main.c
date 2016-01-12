@@ -115,6 +115,7 @@ int main(int argc, char **argv) {
   char *currentBlock;
   unsigned long target;
   
+  // parse arguments
   if (argc != 3) {
     printUsage(argv[0]);
     return -1;
@@ -128,7 +129,6 @@ int main(int argc, char **argv) {
       printUsage(argv[0]);
       return -1;
     }
-    printf("%d\n", threadCount);
   }
 }
 /*
