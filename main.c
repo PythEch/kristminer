@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "curl.c"
 #include "crypto.c"
@@ -182,6 +183,8 @@ int main(int argc, char **argv) {
           printf("Respawning thread #%d.\n", i);
           args.startOffset = startOffset++ * NONCE_OFFSET;
           pthread_create(&threads[i], NULL, mine, &args);
+          break;
+        default:
           break;
       }
     }
