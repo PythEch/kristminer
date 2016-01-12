@@ -116,16 +116,21 @@ int main(int argc, char **argv) {
   unsigned long target;
   
   // parse arguments
-  if (argc != 3) {
+  if (argc != 2 && argc != 3) {
     printUsage(argv[0]);
     return -1;
   } else {
+    // make sure minerID is exactly 10 in length
     sscanf(argv[1], "%10s", minerID);
     if (strlen(minerID) != 10) {
-      printUsage(argv[0]);
+      printf("Invalid address.\n");
       return -1;
     }
-    if (sscanf(argv[2], "--threads=%d", &threadCount) != 1) {
+    
+    // the default for threadCount is 1
+    if (argc == 2) {
+      threadCount = 1;
+    } else if (sscanf(argv[2], "--threads=%d", &threadCount) != 1) {
       printUsage(argv[0]);
       return -1;
     }
