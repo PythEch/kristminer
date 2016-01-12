@@ -68,6 +68,8 @@ void *mine(void *args_struct) {
   long nonce = args->startOffset;
 
   for (int i = 0; i < NONCE_OFFSET; i++, nonce++) {
+    if (*args->successful)
+      return NULL;
     // mine it! 
     // newBlock = Long.parseLong (Utils.subSHA256(minerID + block +
     // Long.toString(nonce, 36), 12), 16);
@@ -175,7 +177,6 @@ int main(int argc, char **argv) {
           args->startOffset = i * 10000000;
         break;
       }
-
       pthread_create(&(thread[x]), NULL, mine, args);
     }
 
