@@ -13,7 +13,7 @@
 #include "curl.c"
 #include "crypto.c"
 
-#define DEBUG
+//#define DEBUG
 //#define DEBUG_OVERKILL
 #define MINE_STEPS 10000000
 
@@ -39,7 +39,7 @@ void initURLs() {
 
 char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
 
-unsigned int getWork() { return atoi(httpGet(GET_WORK_URL)); }
+unsigned long getWork() { return atoi(httpGet(GET_WORK_URL)); }
 
 char *getBalance(const char *minerID) {
   char url[strlen(GET_BALANCE_URL) + strlen(minerID) + 1];
@@ -47,7 +47,7 @@ char *getBalance(const char *minerID) {
   return httpGet(url);
 }
 
-char *submitWork(const char *minerID, unsigned int nonce) {
+char *submitWork(const char *minerID, unsigned long nonce) {
   char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
   sprintf(url, "%s?submitblock&address=%s&nonce=%s", KRIST_SYNC_URL, minerID, base36enc(nonce));
   printf("Submitting to '%s'\n", url);
@@ -59,7 +59,7 @@ typedef enum { DEAD, SUCCESS } status_t;
 typedef struct {
   const char *minerID;
   const char *block;
-  unsigned int nonce;
+  unsigned long nonce;
   unsigned long target;
 } mine_t;
 
@@ -72,12 +72,12 @@ void printStruct(mine_t *args) {
 #ifdef DEBUG_OVERKILL
          "struct {\n"
          "  minerID: %s,\n"
-         "  nonce: %u,\n"
+         "  nonce: %lu,\n"
          "  block: %s,\n"
          "  target: %lu,\n"
          "}\n", args->minerID, args->nonce, args->block, args->target);
 #else
-         "nonce: %u\n" 
+         "nonce: %lu\n" 
          "block: %s\n"
          "target: %lu\n", args->nonce, args->block, args->target);
 #endif
@@ -133,7 +133,7 @@ void *mine(void *struct_pointer) {
 
     if (longDigest < args.target) {
       printf("i: %d\n", i);
-      printf("nonce: %u\n", args.nonce);
+      printf("nonce: %lu\n", args.nonce);
       printf("longDigest: %lu\n", longDigest);
       printf("toHash: %s\n", toHash);
       printf("submitWork: %s\n", submitWork(args.minerID, args.nonce));
@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
   char *lastBlock;
   void *status;
 
-  unsigned int startOffset = 0;
+  unsigned long startOffset = 0;
 
   // spawning...
 
