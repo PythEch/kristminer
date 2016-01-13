@@ -60,7 +60,7 @@ typedef enum { WORKING, DEAD, SUCCESS } status_t;
 typedef struct {
   const char *minerID;
   const char *block;
-  unsigned int *nonce;
+  unsigned int nonce;
   unsigned long target;
   status_t *status;
 } mine_t;
@@ -88,6 +88,24 @@ void printStruct(mine_t *args) {
 }
 #endif
 
+struct timespec getTime() {
+  struct timespec currentTime;
+
+#ifdef __MACH__
+  clock_serv_t cclock;
+  mach_timespec_t mts;
+  host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+  clock_get_time(cclock, &mts);
+  mach_port_deallocate(mach_task_self(), cclock);
+  currentTime.tv_sec = mts.tv_sec;
+  currentTime.tv_nsec = mts.tv_nsec;
+#else
+  clock_gettime(CLOCK_REALTIME, &currentTime);
+#endif
+
+  return currentTime;
+}
+
 void *mine(void *struct_pointer) {
   mine_t args = *(mine_t *)struct_pointer;
 
@@ -105,9 +123,9 @@ void *mine(void *struct_pointer) {
   memcpy(toHash, args.minerID, 10);
   memcpy(toHash + 10, args.block, 12);
 
-  for (int i = 0; i < MINE_STEPS; i++, (*args.nonce)++) {
+  for (int i = 0; i < MINE_STEPS; i++, args.nonce++) {
     // hash it
-    base36 = base36enc(*args.nonce);
+    base36 = base36enc(args.nonce);
     memcpy(toHash + 10 + 12, base36, strlen(base36) + 1);
     free(base36);
     simpleSHA256(toHash, strlen(toHash), digest);
@@ -119,10 +137,10 @@ void *mine(void *struct_pointer) {
 
     if (longDigest < args.target) {
       printf("i: %d\n", i);
-      printf("nonce: %u\n", *args.nonce);
+      printf("nonce: %u\n", args.nonce);
       printf("longDigest: %lu\n", longDigest);
       printf("toHash: %s\n", toHash);
-      printf("submitWork: %s\n", submitWork(args.minerID, *args.nonce));
+      printf("submitWork: %s\n", submitWork(args.minerID, args.nonce));
       printf("balance: %s\n", getBalance(args.minerID));
       printf("hash: ");
       for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
@@ -178,7 +196,6 @@ int main(int argc, char **argv) {
   // then look after them and re-create them when necessary
   pthread_t threads[threadCount];
   status_t stats[threadCount];
-  unsigned int nonces[threadCount];
   mine_t threadArgs[threadCount];
 
   char *currentBlock;
@@ -187,14 +204,17 @@ int main(int argc, char **argv) {
   unsigned int startOffset = 0;
 
   // spawning...
+
+  // speed related variables
+  struct timespec startTime, finishTime;
+  double timeElapsed;
+
   lastBlock = getLastBlock();
   for (int i = 0; i < threadCount; i++) {
     threadArgs[i].block = lastBlock;
     threadArgs[i].target = getWork();
     threadArgs[i].minerID = minerID;
-
-    nonces[i] = startOffset++ * MINE_STEPS;
-    threadArgs[i].nonce = &nonces[i];
+    threadArgs[i].nonce = startOffset++ * MINE_STEPS;
 
     stats[i] = WORKING;
     threadArgs[i].status = &stats[i];
@@ -202,38 +222,20 @@ int main(int argc, char **argv) {
     pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
   }
 
-  // maintain threads, here we are defining speed related variables
-  struct timespec currentTime, lastTime;
-  double timeElapsed;
-  unsigned int lastSpeed = 0;
-
+  // maintain threads
   while (true) {
+    startTime = getTime();
 
-// calculate the speed, this is gonna be hard
-#ifdef __MACH__
-    clock_serv_t cclock;
-    mach_timespec_t mts;
-    host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-    clock_get_time(cclock, &mts);
-    mach_port_deallocate(mach_task_self(), cclock);
-    currentTime.tv_sec = mts.tv_sec;
-    currentTime.tv_nsec = mts.tv_nsec;
-#else
-    clock_gettime(CLOCK_REALTIME, &currentTime);
-#endif
-
-    timeElapsed = (currentTime.tv_sec - lastTime.tv_sec);
-    timeElapsed += (currentTime.tv_nsec - lastTime.tv_nsec) / 1000000000.0;
-
-    unsigned int speed = 0;
-    for (int i = 0; i < threadCount; i++) {
-      speed += *threadArgs[i].nonce;
+    // the last thread will finish first most likely
+    for (int i = threadCount - 1; i >= 0; i--) {
+      pthread_join(threads[i], NULL);
     }
 
-    printf("Speed: %.2f mh/s...\n", (speed - lastSpeed) / 1000000.0 / timeElapsed);
+    finishTime = getTime();
 
-    lastSpeed = speed;
-    lastTime = currentTime;
+    timeElapsed = (finishTime.tv_sec - startTime.tv_sec);
+    timeElapsed += (finishTime.tv_nsec - startTime.tv_nsec) / 1000000000.0;
+    printf("Speed: %.2f mh/s...\n", MINE_STEPS * 4 / 1000000.0 / timeElapsed);
 
     // check if block changed and then assign nonce to 0 if it's the case
     currentBlock = getLastBlock();
@@ -261,9 +263,12 @@ int main(int argc, char **argv) {
         return 0;
         break;
       case DEAD:
-        printf("Respawning thread #%d.\n", i);
 
-        *threadArgs[i].nonce = startOffset++ * MINE_STEPS;
+#ifdef DEBUG
+        printf("Respawning thread #%d.\n", i);
+#endif
+
+        threadArgs[i].nonce = startOffset++ * MINE_STEPS;
 
         threadArgs[i].block = currentBlock;
         *threadArgs[i].status = WORKING;
@@ -274,9 +279,6 @@ int main(int argc, char **argv) {
         break;
       }
     }
-
-    // sleep... sleep my beauty...
-    sleep(SLEEP_SECONDS);
   }
 
   return 0;
