@@ -55,14 +55,13 @@ char *submitWork(const char *minerID, unsigned int nonce) {
   return httpGet(url);
 }
 
-typedef enum { WORKING, DEAD, SUCCESS } status_t;
+typedef enum { DEAD, SUCCESS } status_t;
 
 typedef struct {
   const char *minerID;
   const char *block;
   unsigned int nonce;
   unsigned long target;
-  status_t *status;
 } mine_t;
 
 #ifdef DEBUG
@@ -149,13 +148,11 @@ void *mine(void *struct_pointer) {
       printf("\ntarget: %lu\n", args.target);
       printf("block: %s\n", args.block);
 
-      *args.status = SUCCESS;
-      return NULL;
+      return (void *)SUCCESS;
     }
   }
 
-  *args.status = DEAD;
-  return NULL;
+  return (void *)DEAD;
 }
 
 void printUsage(char *programName) {
@@ -195,11 +192,12 @@ int main(int argc, char **argv) {
   // spawn threads for the first time
   // then look after them and re-create them when necessary
   pthread_t threads[threadCount];
-  status_t stats[threadCount];
   mine_t threadArgs[threadCount];
 
   char *currentBlock;
+  unsigned long currentTarget;
   char *lastBlock;
+  void *status;
 
   unsigned int startOffset = 0;
 
@@ -209,15 +207,14 @@ int main(int argc, char **argv) {
   struct timespec startTime, finishTime;
   double timeElapsed;
 
-  lastBlock = getLastBlock();
+  currentBlock = getLastBlock();
+  currentTarget = getWork();
+  lastBlock = strdup(getLastBlock());
   for (int i = 0; i < threadCount; i++) {
-    threadArgs[i].block = lastBlock;
-    threadArgs[i].target = getWork();
+    threadArgs[i].block = currentBlock;
+    threadArgs[i].target = currentTarget;
     threadArgs[i].minerID = minerID;
     threadArgs[i].nonce = startOffset++ * MINE_STEPS;
-
-    stats[i] = WORKING;
-    threadArgs[i].status = &stats[i];
 
     pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
   }
@@ -228,7 +225,12 @@ int main(int argc, char **argv) {
 
     // the last thread will finish first most likely
     for (int i = threadCount - 1; i >= 0; i--) {
-      pthread_join(threads[i], NULL);
+      pthread_join(threads[i], &status);
+
+      if (status == SUCCESS) {
+        printf("Successfully mined 'something'.\nTerminating...\n");
+        return 0;
+      }
     }
 
     finishTime = getTime();
@@ -248,36 +250,17 @@ int main(int argc, char **argv) {
       } else {
         printf("Block changed from %s to %s...\n", lastBlock, currentBlock);
         startOffset = 0;
+        currentTarget = getWork();
         lastBlock = strdup(currentBlock);
       }
     }
 
-    // check if threads are dead or they mined something
     for (int i = 0; i < threadCount; i++) {
-#ifdef DEBUG_OVERKILL
-      printf("stats[%d]: %d\n", i, stats[i]);
-#endif
-      switch (stats[i]) {
-      case SUCCESS:
-        printf("Successfully mined 'something'.\nTerminating...\n");
-        return 0;
-        break;
-      case DEAD:
+      threadArgs[i].nonce = startOffset++ * MINE_STEPS;
+      threadArgs[i].block = currentBlock;
+      threadArgs[i].target = currentTarget;
 
-#ifdef DEBUG
-        printf("Respawning thread #%d.\n", i);
-#endif
-
-        threadArgs[i].nonce = startOffset++ * MINE_STEPS;
-
-        threadArgs[i].block = currentBlock;
-        *threadArgs[i].status = WORKING;
-
-        pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
-        break;
-      default:
-        break;
-      }
+      pthread_create(&threads[i], NULL, mine, &threadArgs[i]);
     }
   }
 
