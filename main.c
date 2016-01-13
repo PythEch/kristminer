@@ -13,10 +13,9 @@
 #include "curl.c"
 #include "crypto.c"
 
-//#define DEBUG
+#define DEBUG
 //#define DEBUG_OVERKILL
 #define MINE_STEPS 10000000
-#define SLEEP_SECONDS 2
 
 char *KRIST_SYNC_URL;
 char *LAST_BLOCK_URL;
@@ -67,23 +66,21 @@ typedef struct {
 #ifdef DEBUG
 void printStruct(mine_t *args) {
 
-  printf("-------------------------------\n");
+  // I'm deeply sorry for this weird optimization, but threads are erm... weird?
+  printf("-------------------------------\n"
 
 #ifdef DEBUG_OVERKILL
-  printf("struct {\n");
-  printf("  minerID: %s,\n", args->minerID);
-  printf("  startOffset: %u,\n", args->startOffset);
-  printf("  block: %s,\n", args->block);
-  printf("  target: %lu,\n", args->target);
-  printf("  status: %s\n", *args->status == WORKING ? "WORKING" : *args->status == DEAD ? "DEAD" : "SUCCESS");
-  printf("}\n");
+         "struct {\n"
+         "  minerID: %s,\n"
+         "  nonce: %u,\n"
+         "  block: %s,\n"
+         "  target: %lu,\n"
+         "}\n", args->minerID, args->nonce, args->block, args->target);
 #else
-  printf("startOffset: %u\n", args->startOffset);
-  printf("block: %s\n", args->block);
-  printf("target: %lu\n", args->target);
+         "nonce: %u\n" 
+         "block: %s\n"
+         "target: %lu\n", args->nonce, args->block, args->target);
 #endif
-
-  printf("-------------------------------\n");
 }
 #endif
 
