@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
 
     timeElapsed = (finishTime.tv_sec - startTime.tv_sec);
     timeElapsed += (finishTime.tv_nsec - startTime.tv_nsec) / 1000000000.0;
-    printf("Speed: %.2f mh/s...\n", MINE_STEPS * 4 / 1000000.0 / timeElapsed);
+    printf("Speed: %.2f mh/s...\n", MINE_STEPS * threadCount / 1000000.0 / timeElapsed);
 
     // check if block changed and then assign nonce to 0 if it's the case
     currentBlock = getLastBlock();
