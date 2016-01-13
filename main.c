@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
     for (int i = threadCount - 1; i >= 0; i--) {
       pthread_join(threads[i], &status);
 
-      if (status == SUCCESS) {
+      if ((int)status == SUCCESS) {
         printf("Successfully mined 'something'.\nTerminating...\n");
         return 0;
       }
