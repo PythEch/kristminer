@@ -14,8 +14,4 @@ typedef struct {
   unsigned long target;
 } mine_t;
 
-void *mine(void *struct_pointer);
-void printUsage(char *programName);
-int main(int argc, char **argv);
-
 #endif

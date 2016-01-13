@@ -38,9 +38,17 @@ char *getBalance(const char *minerID) {
 
 char *submitWork(const char *minerID, unsigned long nonce) {
   char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
-  sprintf(url, "%s?submitblock&address=%s&nonce=%s", KRIST_SYNC_URL, minerID, base36enc(nonce));
+  sprintf(url, "%s?submitblock&address=%s&nonce=%s", KRIST_SYNC_URL, minerID, longToBytes(nonce));
   printf("Submitting to '%s'\n", url);
   return httpGet(url);
+}
+
+void printHash(unsigned char *digest) {
+  printf("hash: ");
+  for (int i = 0; i < sizeof(digest); i++) {
+    printf("%02x", digest[i]);
+  }
+  printf("\n");
 }
 
 #ifdef DEBUG

@@ -16,5 +16,6 @@ char *getBalance(const char *minerID);
 char *submitWork(const char *minerID, unsigned long nonce);
 void printStruct(mine_t *args);
 struct timespec getTime();
+void printHash(unsigned char *digest);
 
 #endif

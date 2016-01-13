@@ -1,5 +1,7 @@
 #include <openssl/sha.h>
 #include <string.h>
+#include <stdlib.h>
+#include <limits.h>
 
 #include "crypto.h"
 
@@ -35,4 +37,27 @@ char *base36enc(long unsigned int value) {
   } while (value /= 36);
 
   return strdup(&buffer[offset]); // warning: this must be free-d by the user
+}
+
+unsigned char *longToBytes(unsigned long value) {   
+  char buffer[9];
+  unsigned int offset = sizeof(buffer);
+
+  buffer[--offset] = '\0';
+  do {
+    buffer[--offset] = value;
+  } while (value >>= CHAR_BIT);
+
+  return (unsigned char *)strdup(&buffer[offset]); // warning: this must be free-d by the user
+}
+
+unsigned long bytesToLong(unsigned char *value, unsigned int length) {
+  unsigned long number = 0;
+  
+  for (int i = 0; i < length; i++) {
+    number <<= CHAR_BIT;
+    number |= value[i];
+  }
+  
+  return number;
 }
