@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
   char *lastBlock;
   void *status;
 
-  unsigned long startOffset = 0;
+  unsigned long startOffset = rand() % MINE_STEPS;
 
   // spawning...
 
@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
         continue;
       } else {
         printf("Block changed from %s to %s...\n", lastBlock, currentBlock);
-        startOffset = 0;
+        startOffset = rand() % MINE_STEPS;
         currentTarget = getWork();
         lastBlock = strdup(currentBlock);
       }
