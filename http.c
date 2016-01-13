@@ -31,12 +31,7 @@
 
 #include <curl/curl.h>
 
-#define USER_AGENT "youneedjesus/1.0"
-
-struct MemoryStruct {
-  char *memory;
-  size_t size;
-};
+#include "http.h"
 
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb,
                                   void *userp) {

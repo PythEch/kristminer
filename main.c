@@ -1,106 +1,13 @@
+#include <string.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <pthread.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/time.h>
 
-#ifdef __MACH__
-#include <mach/clock.h>
-#include <mach/mach.h>
-#endif
-
-#include "curl.c"
-#include "crypto.c"
-
-//#define DEBUG
-//#define DEBUG_OVERKILL
-#define MINE_STEPS 10000000
-
-char *KRIST_SYNC_URL;
-char *LAST_BLOCK_URL;
-char *GET_WORK_URL;
-char *GET_BALANCE_URL;
-
-void initURLs() {
-  KRIST_SYNC_URL = httpGet("https://raw.githubusercontent.com/BTCTaras/"
-                           "kristwallet/master/staticapi/syncNode");
-  KRIST_SYNC_URL[strlen(KRIST_SYNC_URL) - 1] = '\0';
-
-  LAST_BLOCK_URL = malloc(strlen(KRIST_SYNC_URL) + strlen("?lastblock") + 1);
-  sprintf(LAST_BLOCK_URL, "%s?lastblock", KRIST_SYNC_URL);
-
-  GET_WORK_URL = malloc(strlen(KRIST_SYNC_URL) + strlen("?getwork") + 1);
-  sprintf(GET_WORK_URL, "%s?getwork", KRIST_SYNC_URL);
-
-  GET_BALANCE_URL = malloc(strlen(KRIST_SYNC_URL) + strlen("?getbalance=") + 1);
-  sprintf(GET_BALANCE_URL, "%s?getbalance=", KRIST_SYNC_URL);
-}
-
-char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
-
-unsigned long getWork() { return atoi(httpGet(GET_WORK_URL)); }
-
-char *getBalance(const char *minerID) {
-  char url[strlen(GET_BALANCE_URL) + strlen(minerID) + 1];
-  sprintf(url, "%s%s", GET_BALANCE_URL, minerID);
-  return httpGet(url);
-}
-
-char *submitWork(const char *minerID, unsigned long nonce) {
-  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
-  sprintf(url, "%s?submitblock&address=%s&nonce=%s", KRIST_SYNC_URL, minerID, base36enc(nonce));
-  printf("Submitting to '%s'\n", url);
-  return httpGet(url);
-}
-
-typedef enum { DEAD, SUCCESS } status_t;
-
-typedef struct {
-  const char *minerID;
-  const char *block;
-  unsigned long nonce;
-  unsigned long target;
-} mine_t;
-
-#ifdef DEBUG
-void printStruct(mine_t *args) {
-
-  // I'm deeply sorry for this weird optimization, but threads are erm... weird?
-  printf("-------------------------------\n"
-
-#ifdef DEBUG_OVERKILL
-         "struct {\n"
-         "  minerID: %s,\n"
-         "  nonce: %lu,\n"
-         "  block: %s,\n"
-         "  target: %lu,\n"
-         "}\n", args->minerID, args->nonce, args->block, args->target);
-#else
-         "nonce: %lu\n" 
-         "block: %s\n"
-         "target: %lu\n", args->nonce, args->block, args->target);
-#endif
-}
-#endif
-
-struct timespec getTime() {
-  struct timespec currentTime;
-
-#ifdef __MACH__
-  clock_serv_t cclock;
-  mach_timespec_t mts;
-  host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-  clock_get_time(cclock, &mts);
-  mach_port_deallocate(mach_task_self(), cclock);
-  currentTime.tv_sec = mts.tv_sec;
-  currentTime.tv_nsec = mts.tv_nsec;
-#else
-  clock_gettime(CLOCK_REALTIME, &currentTime);
-#endif
-
-  return currentTime;
-}
+#include "http.h"
+#include "crypto.h"
+#include "utils.h"
+#include "main.h"
 
 void *mine(void *struct_pointer) {
   mine_t args = *(mine_t *)struct_pointer;
@@ -130,7 +37,7 @@ void *mine(void *struct_pointer) {
       longDigest <<= 8;
       longDigest |= digest[i];
     }
-
+    
     if (longDigest < args.target) {
       printf("i: %d\n", i);
       printf("nonce: %lu\n", args.nonce);
