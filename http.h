@@ -8,6 +8,6 @@ struct MemoryStruct {
   size_t size;
 };
 
-char *httpGet(const char *url);
+char *httpGet(const char *url, const char *params);
 
 #endif

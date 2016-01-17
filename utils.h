@@ -5,9 +5,6 @@
 #include "main.h"
 
 char *KRIST_SYNC_URL;
-char *LAST_BLOCK_URL;
-char *GET_WORK_URL;
-char *GET_BALANCE_URL;
 
 void initURLs();
 char *getLastBlock();
