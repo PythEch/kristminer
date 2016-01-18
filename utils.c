@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <curl/curl.h>
+
 #ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
@@ -37,15 +39,28 @@ char *getBalance(const char *minerID) {
 }
 
 char *submitWork(const char *minerID, unsigned long nonce) {
-  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
-  sprintf(url, "%s?submitblock&address=%s&nonce=%s", KRIST_SYNC_URL, minerID, longToBytes(nonce));
+  // url encode the nonce
+  CURL *curl = curl_easy_init();
+  char *encodedNonce = curl_easy_escape(curl, (char *)longToBytes(nonce), 6);
+  printf("encoded: %s\n", encodedNonce);
+  printHash(longToBytes(nonce), NONCE_LENGTH);
+  
+  // submit work
+  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 18 + 1];
+  sprintf(url, "%s?submitblock&address=%s&nonce=%s", KRIST_SYNC_URL, minerID, encodedNonce);
   printf("Submitting to '%s'\n", url);
+  
+  // cleaning
+  curl_free(encodedNonce);
+  curl_easy_cleanup(curl);
+  curl_global_cleanup();
+  
   return httpGet(url);
 }
 
-void printHash(unsigned char *digest) {
+void printHash(unsigned char *digest, unsigned int length) {
   printf("hash: ");
-  for (int i = 0; i < sizeof(digest); i++) {
+  for (int i = 0; i < length; i++) {
     printf("%02x", digest[i]);
   }
   printf("\n");

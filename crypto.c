@@ -6,6 +6,7 @@
 #include "crypto.h"
 
 #define SHA256_DIGEST_LENGTH 32
+#define NONCE_LENGTH 6
 
 // from http://stackoverflow.com/a/2262447
 bool simpleSHA256(unsigned char *input, unsigned long length,
@@ -40,21 +41,20 @@ char *base36enc(long unsigned int value) {
 }
 
 unsigned char *longToBytes(unsigned long value) {   
-  char buffer[9];
-  unsigned int offset = sizeof(buffer);
+  unsigned char *buffer = malloc(NONCE_LENGTH);
 
-  buffer[--offset] = '\0';
-  do {
-    buffer[--offset] = value;
-  } while (value >>= CHAR_BIT);
+  for (int i = NONCE_LENGTH - 1; i >= 0; --i) {
+    buffer[i] = value;
+    value >>= CHAR_BIT;
+  }
 
-  return (unsigned char *)strdup(&buffer[offset]); // warning: this must be free-d by the user
+  return buffer; // warning: this must be free-d by the user
 }
 
-unsigned long bytesToLong(unsigned char *value, unsigned int length) {
+unsigned long bytesToLong(unsigned char *value) {
   unsigned long number = 0;
   
-  for (int i = 0; i < length; i++) {
+  for (int i = 0; i < NONCE_LENGTH; i++) {
     number <<= CHAR_BIT;
     number |= value[i];
   }

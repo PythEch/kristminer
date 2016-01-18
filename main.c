@@ -29,10 +29,10 @@ void *mine(void *struct_pointer) {
   for (int i = 0; i < MINE_STEPS; i++, args.nonce++) {
     // hash it
     bytes = longToBytes(args.nonce);
-    memcpy(toHash + 10 + 12, bytes, strlen(bytes) + 1);
+    memcpy(toHash + 10 + 12, bytes, sizeof(bytes) - 1);
     free(bytes);
-    simpleSHA256(toHash, strlen(toHash), digest);
-    longDigest = bytesToLong(digest, 6);
+    simpleSHA256(toHash, sizeof(toHash), digest);
+    longDigest = bytesToLong(digest);
     
     if (longDigest < args.target) {
       printf("i: %d\n", i);
@@ -41,7 +41,7 @@ void *mine(void *struct_pointer) {
       printf("toHash: %s\n", toHash);
       printf("submitWork: %s\n", submitWork(args.minerID, args.nonce));
       printf("balance: %s\n", getBalance(args.minerID));
-      printHash(digest);
+      printHash(digest, NONCE_LENGTH);
       printf("\ntarget: %lu\n", args.target);
       printf("block: %s\n", args.block);
 
@@ -58,7 +58,7 @@ void printUsage(char *programName) {
   printf("Usage: %s address [--threads=n]\n", programName);
 }
 
-int main(int argc, char **argv) {  
+int main(int argc, char **argv) {
   char minerID[11];
   unsigned int threadCount;
 
