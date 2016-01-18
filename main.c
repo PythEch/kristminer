@@ -29,9 +29,9 @@ void *mine(void *struct_pointer) {
   for (int i = 0; i < MINE_STEPS; i++, args.nonce++) {
     // hash it
     bytes = longToBytes(args.nonce);
-    memcpy(toHash + 10 + 12, bytes, sizeof(bytes) - 1);
+    memcpy(toHash + 10 + 12, bytes, strlen(bytes) + 1);
     free(bytes);
-    simpleSHA256(toHash, sizeof(toHash), digest);
+    simpleSHA256(toHash, strlen(toHash), digest);
     longDigest = bytesToLong(digest, 6);
     
     if (longDigest < args.target) {
@@ -108,7 +108,6 @@ int main(int argc, char **argv) {
   currentTarget = getWork();
   lastBlock = strdup(getLastBlock());
   for (int i = 0; i < threadCount; i++) {
-    
     threadArgs[i].block = currentBlock;
     threadArgs[i].target = currentTarget;
     threadArgs[i].minerID = minerID;
@@ -119,7 +118,6 @@ int main(int argc, char **argv) {
 
   // maintain threads
   while (true) {
-    
     startTime = getTime();
 
     // the last thread will finish first most likely

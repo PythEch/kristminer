@@ -52,11 +52,9 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb,
   return realsize;
 }
 
-char *httpGet(const char *url, const char *params) {
+char *httpGet(const char *url) {
   CURL *curl_handle;
   CURLcode res;
-  char *encodedParams;
-  char *finalUrl;
 
   struct MemoryStruct chunk;
 
@@ -69,13 +67,8 @@ char *httpGet(const char *url, const char *params) {
   curl_handle = curl_easy_init();
 
   /* specify URL to get */
-  encodedParams = curl_easy_escape(curl_handle, params, strlen(params));
-  finalUrl = malloc(strlen(url) + strlen(encodedParams) + 1);
-  sprintf(finalUrl, "%s%s", url, encodedParams);
-  curl_easy_setopt(curl_handle, CURLOPT_URL, finalUrl);
-  curl_free(encodedParams);
-  free(finalUrl);
-  
+  curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+
   /* send all data to this function  */
   curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
 

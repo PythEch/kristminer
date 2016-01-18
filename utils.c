@@ -13,25 +13,34 @@
 
 void initURLs() {
   KRIST_SYNC_URL = httpGet("https://raw.githubusercontent.com/BTCTaras/"
-                           "kristwallet/master/staticapi/syncNode", "");
+                           "kristwallet/master/staticapi/syncNode");
   KRIST_SYNC_URL[strlen(KRIST_SYNC_URL) - 1] = '\0';
+
+  LAST_BLOCK_URL = malloc(strlen(KRIST_SYNC_URL) + strlen("?lastblock") + 1);
+  sprintf(LAST_BLOCK_URL, "%s?lastblock", KRIST_SYNC_URL);
+
+  GET_WORK_URL = malloc(strlen(KRIST_SYNC_URL) + strlen("?getwork") + 1);
+  sprintf(GET_WORK_URL, "%s?getwork", KRIST_SYNC_URL);
+
+  GET_BALANCE_URL = malloc(strlen(KRIST_SYNC_URL) + strlen("?getbalance=") + 1);
+  sprintf(GET_BALANCE_URL, "%s?getbalance=", KRIST_SYNC_URL);
 }
 
-char *getLastBlock() { return httpGet(KRIST_SYNC_URL, "?lastblock"); }
+char *getLastBlock() { return httpGet(LAST_BLOCK_URL); }
 
-unsigned long getWork() { return atol(httpGet(KRIST_SYNC_URL, "?getwork")); }
+unsigned long getWork() { return atoi(httpGet(GET_WORK_URL)); }
 
 char *getBalance(const char *minerID) {
-  char params[strlen("?getbalance=") + strlen(minerID) + 1];
-  sprintf(params, "?getbalance=%s", minerID);
-  return httpGet(KRIST_SYNC_URL, params);
+  char url[strlen(GET_BALANCE_URL) + strlen(minerID) + 1];
+  sprintf(url, "%s%s", GET_BALANCE_URL, minerID);
+  return httpGet(url);
 }
 
 char *submitWork(const char *minerID, unsigned long nonce) {
-  char params[strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
-  sprintf(params, "?submitblock&address=%s&nonce=%s", minerID, longToBytes(nonce));
-  printf("Submitting to '%s%s'\n", KRIST_SYNC_URL, params);
-  return httpGet(KRIST_SYNC_URL, params);
+  char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 8 + 1];
+  sprintf(url, "%s?submitblock&address=%s&nonce=%s", KRIST_SYNC_URL, minerID, longToBytes(nonce));
+  printf("Submitting to '%s'\n", url);
+  return httpGet(url);
 }
 
 void printHash(unsigned char *digest) {
