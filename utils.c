@@ -42,8 +42,6 @@ char *submitWork(const char *minerID, unsigned long nonce) {
   // url encode the nonce
   CURL *curl = curl_easy_init();
   char *encodedNonce = curl_easy_escape(curl, (char *)longToBytes(nonce), 6);
-  printf("encoded: %s\n", encodedNonce);
-  printHash(longToBytes(nonce), NONCE_LENGTH);
   
   // submit work
   char url[strlen(KRIST_SYNC_URL) + strlen("?submitblock&address=") + 10 + strlen("&nonce=") + 18 + 1];
